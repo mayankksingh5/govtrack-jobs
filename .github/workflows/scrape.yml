@@ -1,0 +1,34 @@
+name: scrape
+
+on:
+  schedule:
+    # Har 30 min. Note: GitHub free tier pe scheduled runs peak hours me
+    # 5-20 min late chal sakte hain -- sarkari notification ke liye ye
+    # bilkul theek hai.
+    - cron: '*/30 * * * *'
+  workflow_dispatch: # manual "Run workflow" button
+
+concurrency:
+  group: scrape
+  cancel-in-progress: false
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - run: npm ci
+
+      - run: node scraper.js
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}

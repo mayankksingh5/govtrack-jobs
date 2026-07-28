@@ -1,0 +1,85 @@
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    margin: 0;
+    min-width: 320px;
+    min-height: 100vh;
+    background: #f1f5f9;
+  }
+
+  .dark body {
+    background:
+      radial-gradient(circle at 80% -20%, rgba(16, 185, 129, 0.12), transparent 34rem),
+      #07100e;
+  }
+
+  button:not(:disabled),
+  a {
+    cursor: pointer;
+  }
+
+  button:disabled {
+    cursor: not-allowed;
+    opacity: 0.45;
+  }
+}
+
+@layer components {
+  .panel {
+    @apply rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-[#0d1a17];
+  }
+
+  .button {
+    @apply inline-flex items-center justify-center rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-400/60;
+  }
+
+  .button-secondary {
+    @apply inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-emerald-400/50 dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10;
+  }
+
+  .input {
+    @apply min-w-0 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none transition placeholder:text-slate-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/15 dark:border-white/10 dark:bg-white/5;
+  }
+
+  .data-table {
+    @apply w-full border-collapse text-left text-sm;
+  }
+
+  .data-table th {
+    @apply border-b border-slate-200 bg-slate-50 px-5 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:border-white/10 dark:bg-white/[.025];
+  }
+
+  .data-table td {
+    @apply border-b border-slate-100 px-5 py-4 align-top dark:border-white/[.06];
+  }
+
+  .data-table tbody tr {
+    @apply transition hover:bg-slate-50 dark:hover:bg-white/[.025];
+  }
+
+  .tag {
+    @apply inline-flex rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-1 text-xs capitalize text-emerald-700 dark:text-emerald-300;
+  }
+
+  .link-button {
+    @apply text-xs font-semibold text-emerald-700 hover:underline dark:text-emerald-300;
+  }
+
+  .tab {
+    @apply whitespace-nowrap rounded-xl px-3 py-2 text-sm text-slate-500 transition hover:bg-slate-100 dark:hover:bg-white/5;
+  }
+
+  .tab.active {
+    @apply bg-emerald-500/10 font-semibold text-emerald-700 dark:text-emerald-300;
+  }
+}

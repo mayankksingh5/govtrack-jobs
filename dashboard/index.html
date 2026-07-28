@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Source health dashboard for the Sarkari notification scraper"
+    />
+    <title>Source Health Dashboard</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">SCRAPER OPERATIONS</p>
+          <h1>Source Health</h1>
+          <p class="subtitle">A live view of configured sources and recorded failures.</p>
+        </div>
+        <button id="refreshButton" class="refresh" type="button" aria-label="Reload dashboard">
+          <span aria-hidden="true">↻</span> Refresh
+        </button>
+      </header>
+
+      <section id="summary" class="summary" aria-label="Health summary"></section>
+
+      <section class="workspace">
+        <div class="toolbar">
+          <div id="filters" class="filters" aria-label="Filter sources">
+            <button class="filter active" type="button" data-filter="all">All</button>
+            <button class="filter" type="button" data-filter="healthy">Healthy</button>
+            <button class="filter" type="button" data-filter="warning">Warning</button>
+            <button class="filter" type="button" data-filter="failed">Failed</button>
+          </div>
+          <p id="updatedAt" class="updated"></p>
+        </div>
+
+        <div id="message" class="message" role="status" aria-live="polite">
+          Loading source health…
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Source</th>
+                <th>Status</th>
+                <th>HTTP</th>
+                <th>Last checked</th>
+                <th>Response time</th>
+                <th>Jobs extracted</th>
+                <th>Last error</th>
+              </tr>
+            </thead>
+            <tbody id="sourceRows"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <footer>
+        Data is read from the project source registry and local health logs.
+      </footer>
+    </main>
+
+    <script src="./app.js" defer></script>
+  </body>
+</html>

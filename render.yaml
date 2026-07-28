@@ -1,0 +1,30 @@
+services:
+  - type: web
+    name: government-jobs-api
+    runtime: node
+    plan: free
+    buildCommand: npm ci --omit=dev
+    startCommand: npm start
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: TRUST_PROXY
+        value: "true"
+      - key: COOKIE_SECURE
+        value: "true"
+      - key: COOKIE_SAME_SITE
+        value: none
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_KEY
+        sync: false
+      - key: CORS_ORIGIN
+        sync: false
+      - key: PASSWORD_RESET_REDIRECT_URL
+        sync: false
+      - key: EMAIL_VERIFICATION_REDIRECT_URL
+        sync: false

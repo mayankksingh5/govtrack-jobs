@@ -1,0 +1,176 @@
+[
+  {
+    "id": "ssc",
+    "name": "SSC",
+    "url": "https://ssc.gov.in/",
+    "enabled": false,
+    "insecureTLS": false,
+    "_note": "SPA: static HTML contains no anchors or usable notification links. Plausible API paths returned the SPA HTML shell, not JSON; manual browser DevTools inspection is required."
+  },
+  {
+    "id": "upsc",
+    "name": "UPSC",
+    "url": "https://upsc.gov.in/whats-new",
+    "enabled": false,
+    "insecureTLS": true,
+    "_note": "Blocked: repeated connection timeouts persisted with insecure TLS enabled."
+  },
+  {
+    "id": "ibps",
+    "name": "IBPS",
+    "url": "https://www.ibps.in/",
+    "enabled": true,
+    "insecureTLS": true
+  },
+  {
+    "id": "rrb-apply",
+    "name": "RRB (Central)",
+    "url": "https://www.rrbapply.gov.in/",
+    "enabled": false,
+    "insecureTLS": true,
+    "_note": "Wrong URL: the central landing URL returns HTTP 404 and no static links."
+  },
+  {
+    "id": "upsssc",
+    "name": "UPSSSC",
+    "url": "https://upsssc.gov.in/AllNotifications.aspx",
+    "enabled": false,
+    "insecureTLS": true,
+    "_note": "Blocked: repeated connection timeouts persisted with insecure TLS enabled."
+  },
+  {
+    "id": "uppsc",
+    "name": "UPPSC",
+    "url": "https://uppsc.up.nic.in/Notifications.aspx",
+    "enabled": false,
+    "insecureTLS": true,
+    "_note": "Wrong URL: Notifications.aspx redirects to FileNotFound.aspx; tested likely notification and advertisement paths also returned HTTP 404."
+  },
+  {
+    "id": "bpsc",
+    "name": "BPSC",
+    "url": "https://www.bpsc.bihar.gov.in/",
+    "enabled": false,
+    "insecureTLS": true,
+    "_note": "Blocked: DNS lookup fails for www.bpsc.bihar.gov.in (ENOTFOUND)."
+  },
+  {
+    "id": "rpsc",
+    "name": "RPSC",
+    "url": "https://rpsc.rajasthan.gov.in/",
+    "enabled": false,
+    "insecureTLS": true,
+    "_note": "Blocked: repeated connection timeouts persisted with insecure TLS enabled."
+  },
+  {
+    "id": "mppsc",
+    "name": "MPPSC",
+    "url": "https://mppsc.mp.gov.in/",
+    "enabled": false,
+    "insecureTLS": true,
+    "_note": "Blocked: repeated connection timeouts persisted with insecure TLS enabled."
+  },
+  {
+    "id": "join-indian-army",
+    "name": "Indian Army",
+    "url": "https://joinindianarmy.nic.in/",
+    "enabled": false,
+    "insecureTLS": true,
+    "_note": "Blocked: repeated connection timeouts persisted with insecure TLS enabled."
+  },
+  {
+    "id": "indian-navy",
+    "name": "Indian Navy",
+    "url": "https://www.joinindiannavy.gov.in/",
+    "enabled": false,
+    "insecureTLS": true,
+    "_note": "Blocked: repeated connection timeouts persisted with insecure TLS enabled."
+  },
+  {
+    "id": "afcat",
+    "name": "Indian Air Force",
+    "url": "https://afcat.cdac.in/",
+    "enabled": false,
+    "insecureTLS": true,
+    "_note": "Blocked: repeated connection timeouts persisted with insecure TLS enabled."
+  },
+  {
+    "id": "sbi-careers",
+    "name": "SBI",
+    "url": "https://sbi.bank.in/web/careers/current-openings",
+    "enabled": true,
+    "insecureTLS": false
+  },
+  {
+    "id": "isro",
+    "name": "ISRO",
+    "url": "https://www.isro.gov.in/Careers.html",
+    "enabled": true,
+    "insecureTLS": false
+  },
+  {
+    "id": "india-post-gds",
+    "name": "India Post GDS",
+    "url": "https://indiapostgdsonline.gov.in/Home.aspx",
+    "enabled": true,
+    "insecureTLS": true
+  },
+  {
+    "id": "bel",
+    "name": "Bharat Electronics Limited",
+    "url": "https://bel-india.in/job-notifications/",
+    "enabled": true,
+    "insecureTLS": true
+  },
+  {
+    "id": "nhpc",
+    "name": "NHPC",
+    "url": "https://www.nhpcindia.com/welcome/job",
+    "enabled": true,
+    "insecureTLS": true
+  },
+  {
+    "id": "rbi",
+    "name": "RBI",
+    "url": "https://opportunities.rbi.org.in/Scripts/Vacancies.aspx",
+    "enabled": true,
+    "insecureTLS": true
+  },
+  {
+    "id": "nta",
+    "name": "NTA",
+    "url": "https://www.nta.ac.in/",
+    "enabled": false,
+    "insecureTLS": false,
+    "_note": "Wrong page: the homepage loads but yields no usable links. NoticeBoardArchive is reachable but predominantly exposes stale 2019-2021 links, so it is not a reliable current feed."
+  },
+
+  {
+    "_comment": "----- EXAMPLE: advanced options (copy in kisi bhi source me) -----",
+    "id": "example-advanced",
+    "name": "Example",
+    "url": "https://example.gov.in/notices",
+    "enabled": false,
+
+    "insecureTLS": true,
+    "_insecureTLS": "Bahut si .gov.in / .nic.in sites ka SSL cert expired ya chain-incomplete hota hai. Ye true karne se wo error skip ho jayega.",
+
+    "selector": "#noticeBoard a",
+    "_selector": "Optional. Diya to sirf isi ke andar ke <a> harvest honge. Nahi diya to pure page ke links. Shuru me mat do -- pehle --discover chala ke dekho.",
+
+    "include": "(?i)(recruit|vacan|admit|result|advt)",
+    "_include": "Optional regex. Link text isse match karna hi chahiye.",
+
+    "exclude": "(?i)(tender|archive|corrigendum|rti)",
+    "_exclude": "Optional regex. Match hua to link drop.",
+
+    "urlInclude": "\\.pdf$",
+    "_urlInclude": "Optional regex URL pe.",
+
+    "forceType": "job",
+    "_forceType": "Classifier ko override karo: job | admit_card | result | answer_key",
+
+    "requireYear": true,
+    "_requireYear": "true = link text ya URL me current/previous year hona chahiye. Purani archive news filter karne ke liye."
+  }
+]
