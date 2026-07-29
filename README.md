@@ -82,6 +82,9 @@ The default local addresses are:
 
 ## Scraper commands
 
+Full production scraper setup is documented in
+[SCRAPER_RUNBOOK.md](SCRAPER_RUNBOOK.md).
+
 Discover links without writing data:
 
 ```bash
@@ -182,6 +185,7 @@ instead of opening a public issue containing exploit details or credentials.
 
 - [DEPLOYMENT.md](DEPLOYMENT.md)
 - [PROJECT_AUDIT.md](PROJECT_AUDIT.md)
+- [SCRAPER_RUNBOOK.md](SCRAPER_RUNBOOK.md)
 - [SOURCES_REPORT.md](SOURCES_REPORT.md)
 - [CLI_HELP.md](CLI_HELP.md)
 - [AUTH_API.md](AUTH_API.md)
