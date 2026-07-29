@@ -3,8 +3,10 @@ import { inflateSync } from 'node:zlib';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { Worker, isMainThread, parentPort, workerData } from 'node:worker_threads';
 
-const PDF_TIMEOUT_MS = 30_000;
+const PDF_DOWNLOAD_TIMEOUT_MS = 30_000;
+const PDF_PARSE_TIMEOUT_MS = 60_000;
 const PDF_UA =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ' +
   '(KHTML, like Gecko) Chrome/125.0 Safari/537.36';
@@ -43,7 +45,7 @@ async function parsePdfNotification({ jobId, url, sourceName, title, insecureTLS
   let buffer;
   try {
     const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), PDF_TIMEOUT_MS);
+    const timer = setTimeout(() => ctrl.abort(), PDF_DOWNLOAD_TIMEOUT_MS);
     try {
       const response = await undiciFetch(url, {
         signal: ctrl.signal,
@@ -74,7 +76,7 @@ async function parsePdfNotification({ jobId, url, sourceName, title, insecureTLS
   }
 
   try {
-    const text = extractPdfText(buffer);
+    const text = await extractPdfTextWithTimeout(buffer);
     if (text.trim().length < 40) {
       throw new Error('No readable text found; PDF may be scanned or use an unsupported font encoding');
     }
@@ -107,6 +109,47 @@ async function parsePdfNotification({ jobId, url, sourceName, title, insecureTLS
       log: makeLog(jobId, url, 'Success', 'Failure', 0, error.message),
     };
   }
+}
+
+function extractPdfTextWithTimeout(buffer, timeoutMs = PDF_PARSE_TIMEOUT_MS) {
+  return new Promise((resolve, reject) => {
+    const arrayBuffer = buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength);
+    const worker = new Worker(new URL(import.meta.url), {
+      workerData: {
+        task: 'extractPdfText',
+        buffer: arrayBuffer,
+      },
+      transferList: [arrayBuffer],
+    });
+    let settled = false;
+    const timer = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      worker.terminate().catch(() => {});
+      reject(new Error(`PDF parsing timed out after ${timeoutMs / 1000} seconds`));
+    }, timeoutMs);
+
+    worker.once('message', (message) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      if (message.ok) resolve(message.text);
+      else reject(new Error(message.error || 'PDF parsing failed'));
+    });
+    worker.once('error', (error) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      reject(error);
+    });
+    worker.once('exit', (code) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      if (code === 0) resolve('');
+      else reject(new Error(`PDF parser worker exited with code ${code}`));
+    });
+  });
 }
 
 function extractPdfText(buffer) {
@@ -277,9 +320,19 @@ function makeLog(jobId, url, downloadStatus, parseStatus, confidence, error = nu
   };
 }
 
+if (!isMainThread && workerData?.task === 'extractPdfText') {
+  try {
+    const text = extractPdfText(Buffer.from(workerData.buffer));
+    parentPort.postMessage({ ok: true, text });
+  } catch (error) {
+    parentPort.postMessage({ ok: false, error: error.message });
+  }
+}
+
 export {
   extractNotificationFields,
   extractPdfText,
+  extractPdfTextWithTimeout,
   isPdfUrl,
   parsePdfNotification,
 };

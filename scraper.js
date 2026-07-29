@@ -546,19 +546,35 @@ async function insertNew(db, items) {
 async function processPdfCandidates(candidates, source) {
   const result = { found: candidates.length, parsed: 0, failed: 0, confidenceTotal: 0 };
   for (const candidate of candidates) {
-    const parsed = await parsePdfNotification({
-      jobId: candidate.jobId,
-      url: candidate.item.url,
-      sourceName: candidate.item.source_name,
-      title: candidate.item.raw_title,
-      insecureTLS: source.insecureTLS,
-    });
-    await appendJsonLog(new URL('./logs/pdf-parser.json', import.meta.url), parsed.log);
-    if (parsed.success) {
-      result.parsed++;
-      result.confidenceTotal += parsed.confidence;
-    } else {
+    try {
+      const parsed = await parsePdfNotification({
+        jobId: candidate.jobId,
+        url: candidate.item.url,
+        sourceName: candidate.item.source_name,
+        title: candidate.item.raw_title,
+        insecureTLS: source.insecureTLS,
+      });
+      await appendJsonLog(new URL('./logs/pdf-parser.json', import.meta.url), parsed.log);
+      if (parsed.success) {
+        result.parsed++;
+        result.confidenceTotal += parsed.confidence;
+      } else {
+        result.failed++;
+      }
+    } catch (error) {
+      console.error(
+        `PDF Parser Error: job=${candidate.jobId} url=${candidate.item.url} error=${error.message}`
+      );
       result.failed++;
+      await appendJsonLog(new URL('./logs/pdf-parser.json', import.meta.url), {
+        job_id: candidate.jobId,
+        pdf_url: candidate.item.url,
+        pdf_download: 'Unknown',
+        parse: 'Failure',
+        extraction_confidence: 0,
+        error: error.message,
+        timestamp: new Date().toISOString(),
+      });
     }
   }
   return result;
