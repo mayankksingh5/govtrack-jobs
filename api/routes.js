@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getDb } from './db.js';
+import { getDb, logDatabaseError } from './db.js';
 import {
   ApiError,
   asyncRoute,
@@ -21,8 +21,9 @@ const response = (res, { data = [], total = 0, page = 1, limit = 20 }) =>
     data,
   });
 
-function assertDbResult(error) {
+function assertDbResult(error, context = {}) {
   if (!error) return;
+  logDatabaseError(context, error);
   const apiError = new Error(`Database query failed: ${error.message}`);
   apiError.status = 500;
   apiError.code = 'DATABASE_ERROR';
@@ -48,7 +49,15 @@ router.get(
     if (qualification) query = query.ilike('qualification', `%${qualification}%`);
 
     const { data, count, error } = await query;
-    assertDbResult(error);
+    assertDbResult(error, {
+      table: 'posts',
+      operation: 'list_jobs',
+      route: 'GET /api/jobs',
+      filters: { category, organization, qualification, status: 'published' },
+      select: PUBLIC_FIELDS,
+      order: ['published_at desc nulls last', 'id desc'],
+      range: { from, to: from + limit - 1 },
+    });
     response(res, { data: data || [], total: count || 0, page, limit });
   })
 );
@@ -63,7 +72,13 @@ router.get(
       .eq('id', req.validated.id)
       .eq('status', 'published')
       .maybeSingle();
-    assertDbResult(error);
+    assertDbResult(error, {
+      table: 'posts',
+      operation: 'get_job',
+      route: 'GET /api/jobs/:id',
+      filters: { id: req.validated.id, status: 'published' },
+      select: PUBLIC_FIELDS,
+    });
     if (!data) throw new ApiError(404, 'JOB_NOT_FOUND', 'Job not found');
     response(res, { data: [data], total: 1, page: 1, limit: 1 });
   })
@@ -85,7 +100,15 @@ router.get(
       )
       .order('published_at', { ascending: false, nullsFirst: false })
       .range(from, from + limit - 1);
-    assertDbResult(error);
+    assertDbResult(error, {
+      table: 'posts',
+      operation: 'search_jobs',
+      route: 'GET /api/search',
+      filters: { q, status: 'published' },
+      select: PUBLIC_FIELDS,
+      order: ['published_at desc nulls last'],
+      range: { from, to: from + limit - 1 },
+    });
     response(res, { data: data || [], total: count || 0, page, limit });
   })
 );
@@ -102,7 +125,15 @@ router.get(
       .order('published_at', { ascending: false, nullsFirst: false })
       .order('id', { ascending: false })
       .limit(limit);
-    assertDbResult(error);
+    assertDbResult(error, {
+      table: 'posts',
+      operation: 'latest_jobs',
+      route: 'GET /api/latest',
+      filters: { status: 'published' },
+      select: PUBLIC_FIELDS,
+      order: ['published_at desc nulls last', 'id desc'],
+      range: { limit },
+    });
     response(res, { data: data || [], total: count || 0, page: 1, limit });
   })
 );
@@ -122,7 +153,18 @@ router.get(
       ),
     ];
     const results = await Promise.all(queries);
-    for (const result of results) assertDbResult(result.error);
+    for (const [index, result] of results.entries()) {
+      assertDbResult(result.error, {
+        table: 'posts',
+        operation: index === 0 ? 'statistics_total' : 'statistics_by_category',
+        route: 'GET /api/statistics',
+        filters: {
+          status: 'published',
+          category: index === 0 ? null : categories[index - 1],
+        },
+        select: 'id',
+      });
+    }
 
     const total = results[0].count || 0;
     const byCategory = Object.fromEntries(

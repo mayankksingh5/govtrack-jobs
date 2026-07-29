@@ -35,3 +35,27 @@ export function getRecommendationDb() {
   }
   return recommendationClient;
 }
+
+export function logDatabaseError(context, error) {
+  console.error(
+    JSON.stringify({
+      level: 'error',
+      event: 'database_query_failed',
+      table: context.table,
+      operation: context.operation,
+      route: context.route,
+      filters: context.filters || {},
+      select: context.select,
+      order: context.order,
+      range: context.range,
+      supabase: {
+        code: error?.code,
+        message: error?.message,
+        details: error?.details,
+        hint: error?.hint,
+        status: error?.status,
+      },
+      timestamp: new Date().toISOString(),
+    })
+  );
+}
