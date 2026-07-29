@@ -1,0 +1,13 @@
+README.md
+BACKEND_DEPLOYMENT.md
+DEPLOYMENT.md
+PROJECT_AUDIT.md
+SOURCES_REPORT.md
+TESTING.md
+TEST_REPORT.md
+admin-panel/
+public-portal/
+coverage/
+test-reports/
+test-results/
+tests/

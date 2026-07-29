@@ -2,6 +2,9 @@
   "name": "sarkari-scraper",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": ">=20 <23"
+  },
   "scripts": {
     "scrape": "node scraper.js",
     "discover": "node discover.js",

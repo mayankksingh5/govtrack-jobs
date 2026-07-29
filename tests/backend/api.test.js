@@ -1,9 +1,14 @@
 import request from 'supertest';
 import { describe, expect, it } from 'vitest';
-import { createApp } from '../../api/app.js';
+import defaultApp, { createApp } from '../../api/app.js';
 
 describe('real API application contracts', () => {
   const app = createApp();
+
+  it('exports a valid Express handler for Vercel', () => {
+    expect(typeof defaultApp).toBe('function');
+    expect(typeof defaultApp.handle).toBe('function');
+  });
 
   it('returns health and a structured 404', async () => {
     const health = await request(app).get('/health');

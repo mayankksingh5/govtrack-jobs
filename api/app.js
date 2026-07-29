@@ -11,8 +11,7 @@ import recommendationRoutes, { savePreferences } from './recommendation-routes.j
 import authRoutes from './auth-routes.js';
 import userRoutes from './user-routes.js';
 
-export function createApp() {
-  const app = express();
+export function configureApp(app) {
   if (process.env.TRUST_PROXY === 'true') app.set('trust proxy', 1);
   app.disable('x-powered-by');
 
@@ -81,3 +80,11 @@ export function createApp() {
   app.use(errorHandler);
   return app;
 }
+
+export function createApp() {
+  return configureApp(express());
+}
+
+const app = createApp();
+
+export default app;
