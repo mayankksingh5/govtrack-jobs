@@ -172,6 +172,7 @@ function harvestLinks(html, baseUrl, source) {
       raw_title: cleanTitle(text),
       url: abs,
       type,
+      important_links: [],
     });
   });
 
@@ -483,6 +484,10 @@ function argVal(args, flag) {
   return i !== -1 ? args[i + 1] : null;
 }
 
+function jsonFilter(value) {
+  return JSON.stringify(value);
+}
+
 function makeDb() {
   const url = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_KEY;
@@ -574,7 +579,7 @@ async function findDuplicate(db, item) {
   const { data: linkedUrl, error: linkedUrlError } = await db
     .from('posts')
     .select(fields)
-    .contains('important_links', [{ url: item.url }])
+    .filter('important_links', 'cs', jsonFilter([{ url: item.url }]))
     .limit(1);
   if (linkedUrlError) throw new Error(`DB: ${linkedUrlError.message}`);
   if (linkedUrl?.[0]) return { ...linkedUrl[0], matched_by: 'important_link_url' };
