@@ -3,10 +3,16 @@ const positiveInt = (value, fallback) => {
   return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
 };
 
-const origins = (process.env.CORS_ORIGIN || '*')
+const REQUIRED_CORS_ORIGINS = ['https://jobportal-phi-topaz.vercel.app'];
+
+const configuredOrigins = (process.env.CORS_ORIGIN || '*')
   .split(',')
   .map((origin) => origin.trim())
   .filter(Boolean);
+
+const origins = configuredOrigins.includes('*')
+  ? configuredOrigins
+  : [...new Set([...configuredOrigins, ...REQUIRED_CORS_ORIGINS])];
 
 export const config = Object.freeze({
   nodeEnv: process.env.NODE_ENV || 'development',

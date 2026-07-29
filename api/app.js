@@ -11,12 +11,28 @@ import recommendationRoutes, { savePreferences } from './recommendation-routes.j
 import authRoutes from './auth-routes.js';
 import userRoutes from './user-routes.js';
 
+const corsOptions = {
+  origin(origin, callback) {
+    if (!origin || config.corsOrigins.includes('*') || config.corsOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(null, false);
+    }
+  },
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Accept', 'Authorization', 'X-User-ID'],
+  credentials: true,
+  maxAge: 86_400,
+  optionsSuccessStatus: 204,
+};
+
 export function configureApp(app) {
   if (process.env.TRUST_PROXY === 'true') app.set('trust proxy', 1);
   app.disable('x-powered-by');
 
   app.use(helmet());
   app.use(compression());
+  app.options(/.*/, cors(corsOptions));
   app.use((req, res, next) => {
     const startedAt = process.hrtime.bigint();
     res.on('finish', () => {
@@ -35,21 +51,7 @@ export function configureApp(app) {
     });
     next();
   });
-  app.use(
-    cors({
-      origin(origin, callback) {
-        if (!origin || config.corsOrigins.includes('*') || config.corsOrigins.includes(origin)) {
-          callback(null, true);
-        } else {
-          callback(null, false);
-        }
-      },
-      methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-      allowedHeaders: ['Content-Type', 'Accept', 'Authorization', 'X-User-ID'],
-      credentials: true,
-      maxAge: 86_400,
-    })
-  );
+  app.use(cors(corsOptions));
   app.use(
     rateLimit({
       windowMs: config.rateLimitWindowMs,

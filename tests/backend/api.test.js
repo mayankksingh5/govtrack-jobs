@@ -17,6 +17,21 @@ describe('real API application contracts', () => {
     expect((await request(app).get('/not-found')).status).toBe(404);
   });
 
+  it('allows the deployed public portal origin and handles CORS preflight', async () => {
+    const origin = 'https://jobportal-phi-topaz.vercel.app';
+    const getResponse = await request(app).get('/health').set('Origin', origin);
+    expect(getResponse.headers['access-control-allow-origin']).toBe(origin);
+    expect(getResponse.headers['access-control-allow-credentials']).toBe('true');
+
+    const optionsResponse = await request(app)
+      .options('/api/jobs')
+      .set('Origin', origin)
+      .set('Access-Control-Request-Method', 'GET');
+    expect(optionsResponse.status).toBe(204);
+    expect(optionsResponse.headers['access-control-allow-origin']).toBe(origin);
+    expect(optionsResponse.headers['access-control-allow-methods']).toContain('GET');
+  });
+
   it('validates search, pagination, filtering, and job IDs before database access', async () => {
     expect((await request(app).get('/api/search')).status).toBe(400);
     expect((await request(app).get('/api/jobs?page=0')).status).toBe(400);
