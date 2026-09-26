@@ -107,13 +107,14 @@ export const trackInteraction = async (jobId, interaction) =>
 
 export const register = async (payload) => (await client.post('/api/auth/register', payload)).data;
 export const login = async (payload) => (await client.post('/api/auth/login', payload)).data;
-export const refreshSession = async () => (await client.post('/api/auth/refresh')).data;
+export const refreshSession = async () =>
+  DEMO ? demo('refreshSession') : (await client.post('/api/auth/refresh')).data;
 export const logout = async () => (await client.post('/api/auth/logout')).data;
 export const forgotPassword = async (email) =>
   (await client.post('/api/auth/forgot-password', { email })).data;
 export const resetPassword = async (access_token, password) =>
   (await client.post('/api/auth/reset-password', { access_token, password })).data;
-export const getProfile = async () => (await client.get('/api/profile')).data;
+export const getProfile = async () => (DEMO ? demo('getProfile') : (await client.get('/api/profile')).data);
 export const updateProfile = async (profile) => (await client.put('/api/profile', profile)).data;
 export const recordJobActivity = async (jobId, activity) =>
   (await client.post(`/api/user/jobs/${jobId}/${activity}`)).data;
@@ -121,3 +122,13 @@ export const removeSavedJob = async (jobId) =>
   (await client.delete(`/api/user/jobs/${jobId}/saved`)).data;
 export const getUserJobs = async (kind, params = {}) =>
   (await client.get(`/api/user/jobs/${kind}`, { params })).data;
+
+/* Admin review (requires an account with the `admin` role). */
+export const getAdminSummary = async () =>
+  DEMO ? demo('getAdminSummary') : (await client.get('/api/admin/summary')).data;
+export const getAdminPosts = async (params = {}) =>
+  DEMO ? demo('getAdminPosts', params) : (await client.get('/api/admin/posts', { params })).data;
+export const getAdminPost = async (id) =>
+  DEMO ? demo('getAdminPost', id) : (await client.get(`/api/admin/posts/${id}`)).data;
+export const updateAdminPost = async (id, changes) =>
+  DEMO ? demo('updateAdminPost', id, changes) : (await client.put(`/api/admin/posts/${id}`, changes)).data;

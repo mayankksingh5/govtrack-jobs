@@ -53,7 +53,49 @@ const page = (list, { page: pageNo = 1, limit = 20 } = {}) => {
   };
 };
 
+// Scraped records waiting for review, as the scraper stores them.
+const pending = [
+  { id: 101, source_id: 'ibps', source_name: 'IBPS', raw_title: 'CRP RRBs-XV Officers Scale I, II, III and Office Assistants Notification', url: 'https://www.ibps.in/wp-content/uploads/CRP-RRB-XV.pdf', type: 'job', first_seen_at: stamp(0) },
+  { id: 102, source_id: 'rbi', source_name: 'RBI', raw_title: 'Recruitment of Assistant Manager (Rajbhasha) 2026', url: 'https://opportunities.rbi.org.in/Scripts/Vacancies.aspx', type: 'job', first_seen_at: stamp(-1) },
+  { id: 103, source_id: 'isro', source_name: 'ISRO', raw_title: 'ISRO ICRB Scientist/Engineer SC Written Test Result', url: 'https://www.isro.gov.in/Careers.html', type: 'result', first_seen_at: stamp(-1) },
+  { id: 104, source_id: 'sbi-careers', source_name: 'SBI', raw_title: 'Call Letter for Online Preliminary Exam - Junior Associates', url: 'https://sbi.bank.in/web/careers/current-openings', type: 'admit_card', first_seen_at: stamp(-2) },
+].map((post) => ({ status: 'pending', important_links: [], updated_at: post.first_seen_at, ...post }));
+
+const adminPosts = () => [
+  ...pending,
+  ...records.map((job) => ({ status: 'published', first_seen_at: job.published_at, url: job.important_links[0]?.url, ...job })),
+];
+
+const DEMO_ADMIN = { user_id: '00000000-0000-4000-8000-000000000001', name: 'Demo Admin', email: 'admin@example.com', role: 'admin' };
+
 export const demoApi = {
+  refreshSession: () => page([{ access_token: 'demo', expires_in: 3600 }]),
+  getProfile: () => page([DEMO_ADMIN]),
+  getAdminSummary: () =>
+    page([{
+      by_status: { pending: pending.filter((post) => post.status === 'pending').length, published: records.length, rejected: 0 },
+      sources: [
+        { source_id: 'ibps', ok: true, links_found: 10, new_items: 1, ms: 2100, ran_at: stamp(0) },
+        { source_id: 'sbi-careers', ok: true, links_found: 53, new_items: 1, ms: 3400, ran_at: stamp(0) },
+        { source_id: 'isro', ok: true, links_found: 4, new_items: 1, ms: 1800, ran_at: stamp(0) },
+        { source_id: 'nhpc', ok: false, links_found: 0, new_items: 0, error: 'HTTP 200 received but no jobs were extracted', ms: 900, ran_at: stamp(0) },
+      ],
+    }]),
+  getAdminPosts: (params = {}) => {
+    const status = params.status || 'pending';
+    return page(adminPosts().filter((post) => post.status === status), params);
+  },
+  getAdminPost: (id) => {
+    const post = adminPosts().find((item) => String(item.id) === String(id));
+    if (!post) throw new Error('Post not found');
+    return page([post], { limit: 1 });
+  },
+  updateAdminPost: (id, changes) => {
+    const post = pending.find((item) => String(item.id) === String(id));
+    if (post) Object.assign(post, changes);
+    return page([{ ...(post || {}), ...changes, id }], { limit: 1 });
+  },
+
   getJobs: (params = {}) =>
     page(
       records.filter(

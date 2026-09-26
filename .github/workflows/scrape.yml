@@ -2,10 +2,10 @@ name: scrape
 
 on:
   schedule:
-    # Har 30 min. Note: GitHub free tier pe scheduled runs peak hours me
-    # 5-20 min late chal sakte hain -- sarkari notification ke liye ye
-    # bilkul theek hai.
-    - cron: '*/30 * * * *'
+    # Har 2 ghante. Private repo ka free Actions quota 2000 min/mahina hai;
+    # har 30 min wala run (~1,440 runs/mahina) quota khatam kar deta tha.
+    # GitHub free tier pe scheduled runs 5-20 min late bhi chal sakte hain.
+    - cron: '17 */2 * * *'
   workflow_dispatch: # manual "Run workflow" button
 
 concurrency:

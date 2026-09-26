@@ -33,6 +33,7 @@ const paths = [
 ];
 const robots = `User-agent: *
 Allow: /
+Disallow: /admin
 
 Sitemap: ${siteUrl}/sitemap.xml
 `;
