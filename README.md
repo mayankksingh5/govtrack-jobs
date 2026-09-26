@@ -121,6 +121,10 @@ configured in `sources.json`.
   workflow publishes them and applies the same rules to anything still
   pending. Rows already published are never overwritten, so edits made in
   `/admin` are kept.
+- **Corrections:** `seed/overrides.json` changes specific existing rows
+  (matched by `id` or `url`), including published ones — e.g. hide an old
+  result or give a vague auto-published title a proper name. Only the keys
+  listed in an entry are changed.
 - **Admin:** `/admin` lists pending, published and rejected posts with
   Source / Reject / Review actions; `/admin/questions` moderates visitor
   questions shown on job pages.
