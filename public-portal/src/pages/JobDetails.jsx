@@ -4,7 +4,8 @@ import { getJob, SITE_URL } from '../api.js';
 import Breadcrumbs from '../components/Breadcrumbs.jsx';
 import Icon from '../components/Icon.jsx';
 import JobQuestions from '../components/JobQuestions.jsx';
-import SEO from '../components/SEO.jsx';
+import SEO, { breadcrumbSchema } from '../components/SEO.jsx';
+import { jobIdFromParam, jobPath } from '../lib/slug.js';
 import { ErrorState, PageSkeleton } from '../components/States.jsx';
 import { Badge, OrgMark, SectionHeading, SectorBadge } from '../components/UI.jsx';
 import { useRequest } from '../hooks/useRequest.js';
@@ -127,10 +128,39 @@ function TabContent({ tab, job, title, notification }) {
   }
 }
 
+/* ~155-character meta description with the facts people search for. */
+function describeJob(job, title, organization) {
+  if (job.short_info) return job.short_info.slice(0, 160);
+  const facts = [
+    job.total_vacancy != null && `${Number(job.total_vacancy).toLocaleString('en-IN')} posts`,
+    job.last_date && `last date ${displayDate(job.last_date)}`,
+    job.exam_date && `exam ${displayDate(job.exam_date)}`,
+  ].filter(Boolean);
+  return `${title} by ${organization}${facts.length ? ` — ${facts.join(', ')}` : ''}. Eligibility, fees, dates and official links.`.slice(0, 160);
+}
+
+/* Google asks for a full description in JobPosting; build it from the facts we hold. */
+function jobPostingDescription(job, title, organization) {
+  const rows = [
+    ['Organization', organization],
+    ['Post', job.post_name],
+    ['Vacancies', job.total_vacancy != null && Number(job.total_vacancy).toLocaleString('en-IN')],
+    ['Qualification', job.qualification],
+    ['Age limit', job.age_limit],
+    ['Application fee', job.fee_info],
+    ['Apply from', displayDate(job.apply_start)],
+    ['Last date', displayDate(job.last_date)],
+    ['Exam date', displayDate(job.exam_date)],
+  ].filter(([, value]) => value);
+  const escape = (value) => String(value).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+  return `<p>${escape(job.short_info || title)}</p><ul>${rows.map(([label, value]) => `<li>${label}: ${escape(value)}</li>`).join('')}</ul><p>Check the official notification before applying.</p>`;
+}
+
 export default function JobDetails() {
-  const { id } = useParams();
+  const { id: param } = useParams();
+  const id = jobIdFromParam(param);
   const [tab, setTab] = useState('Overview');
-  const loader = useCallback(async () => (await getJob(id)).data?.[0] || null, [id]);
+  const loader = useCallback(async () => (id ? (await getJob(id)).data?.[0] || null : null), [id]);
   const { data: job, loading, error, reload } = useRequest(loader, [loader]);
   const left = useCountdown(job?.last_date);
 
@@ -147,28 +177,51 @@ export default function JobDetails() {
   const official = officialLinkFor(job);
   const apply = applyLinkFor(job) || official;
   const toClose = daysUntil(job.last_date);
-  const canonicalPath = `/jobs/${job.id}`;
-  const schema = job.type === 'job' ? {
-    '@context': 'https://schema.org',
-    '@type': 'JobPosting',
-    title,
-    description: job.short_info || title,
-    datePosted: job.published_at,
-    validThrough: job.last_date || undefined,
-    hiringOrganization: { '@type': 'Organization', name: organization },
-    employmentType: 'FULL_TIME',
-    jobLocation: { '@type': 'Place', address: { '@type': 'PostalAddress', addressCountry: 'IN' } },
-    ...(job.total_vacancy != null && { totalJobOpenings: job.total_vacancy }),
-    url: `${SITE_URL}${canonicalPath}`,
-  } : null;
+  const canonicalPath = jobPath(job);
+  const pageUrl = `${SITE_URL}${canonicalPath}`;
+  const metaDescription = describeJob(job, title, organization);
+  const schema = [
+    breadcrumbSchema([{ name: SECTORS[sector].label, path: `/category/${sector}` }, { name: title, path: canonicalPath }]),
+    job.type === 'job'
+      ? {
+          '@context': 'https://schema.org',
+          '@type': 'JobPosting',
+          title,
+          description: jobPostingDescription(job, title, organization),
+          identifier: { '@type': 'PropertyValue', name: organization, value: String(job.id) },
+          datePosted: (job.published_at || '').slice(0, 10) || undefined,
+          validThrough: job.last_date ? `${job.last_date}T23:59:59+05:30` : undefined,
+          hiringOrganization: { '@type': 'Organization', name: organization, ...(official && { sameAs: new URL(official).origin }) },
+          employmentType: 'FULL_TIME',
+          jobLocation: { '@type': 'Place', address: { '@type': 'PostalAddress', addressCountry: 'IN' } },
+          applicantLocationRequirements: { '@type': 'Country', name: 'India' },
+          directApply: false,
+          ...(job.total_vacancy != null && { totalJobOpenings: job.total_vacancy }),
+          ...(job.qualification && { educationRequirements: job.qualification }),
+          url: pageUrl,
+        }
+      : {
+          '@context': 'https://schema.org',
+          '@type': 'NewsArticle',
+          headline: title,
+          description: metaDescription,
+          datePublished: job.published_at,
+          dateModified: job.updated_at || job.published_at,
+          mainEntityOfPage: pageUrl,
+          author: { '@type': 'Organization', name: 'GovTrack Jobs', url: SITE_URL },
+          publisher: { '@type': 'Organization', name: 'GovTrack Jobs', logo: { '@type': 'ImageObject', url: `${SITE_URL}/favicon.svg` } },
+        },
+  ];
 
   return (
     <main className="detail-page">
       <SEO
         title={title}
-        description={job.short_info || `${title} by ${organization}. Check dates, qualification, vacancies and official links.`}
+        description={metaDescription}
         path={canonicalPath}
         type="article"
+        published={job.published_at}
+        modified={job.updated_at}
         schema={schema}
       />
       <div className="container">

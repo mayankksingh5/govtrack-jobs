@@ -4,6 +4,9 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "rewrites": [
+    { "source": "/sitemap.xml", "destination": "/api/sitemap" },
+    { "source": "/jobs/:id", "destination": "/api/seo?path=/jobs/:id" },
+    { "source": "/blog/:slug", "destination": "/api/seo?path=/blog/:slug" },
     { "source": "/(.*)", "destination": "/index.html" }
   ],
   "headers": [

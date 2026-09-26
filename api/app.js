@@ -12,6 +12,7 @@ import authRoutes from './auth-routes.js';
 import userRoutes from './user-routes.js';
 import adminRoutes from './admin-routes.js';
 import questionRoutes from './question-routes.js';
+import blogRoutes from './blog-routes.js';
 
 const corsOptions = {
   origin(origin, callback) {
@@ -79,6 +80,7 @@ export function configureApp(app) {
   app.use('/api/auth', authRoutes);
   app.use('/api/admin', adminRoutes);
   app.use('/api', questionRoutes);
+  app.use('/api', blogRoutes);
   app.use('/api', userRoutes);
   app.use('/api/recommendations', recommendationRoutes);
   app.use('/api', routes);

@@ -81,6 +81,12 @@ export const getLatestQuestions = async (limit = 30) =>
 export const askQuestion = async (jobId, question) =>
   DEMO ? demo('askQuestion', jobId, question) : (await client.post(`/api/jobs/${jobId}/questions`, question)).data;
 
+/* Blog. */
+export const getBlogPosts = async (params = {}) =>
+  DEMO ? demo('getBlogPosts', params) : (await client.get('/api/blog', { params })).data;
+export const getBlogPost = async (slug) =>
+  DEMO ? demo('getBlogPost', slug) : (await client.get(`/api/blog/${slug}`)).data;
+
 /* Editor sign-in. */
 export const login = async (payload) =>
   DEMO ? demo('login') : (await client.post('/api/auth/login', payload)).data;
@@ -108,6 +114,14 @@ export const getAdminQuestions = async (params = {}) =>
   DEMO ? demo('getAdminQuestions', params) : (await client.get('/api/admin/questions', { params })).data;
 export const updateAdminQuestion = async (id, changes) =>
   DEMO ? demo('updateAdminQuestion', id, changes) : (await client.put(`/api/admin/questions/${id}`, changes)).data;
+export const getAdminBlogPosts = async () =>
+  DEMO ? demo('getAdminBlogPosts') : (await client.get('/api/admin/blog')).data;
+export const getAdminBlogPost = async (id) =>
+  DEMO ? demo('getAdminBlogPost', id) : (await client.get(`/api/admin/blog/${id}`)).data;
+export const saveAdminBlogPost = async (id, article) =>
+  DEMO
+    ? demo('saveAdminBlogPost', id, article)
+    : (id ? await client.put(`/api/admin/blog/${id}`, article) : await client.post('/api/admin/blog', article)).data;
 export const setAdminPostStatus = async (id, status) =>
   DEMO
     ? demo('updateAdminPost', id, { status })

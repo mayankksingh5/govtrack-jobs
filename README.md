@@ -130,6 +130,20 @@ configured in `sources.json`.
   questions shown on job pages.
 - **One-time setup for questions:** run `migrations/2026-09-26-job-questions.sql`
   in the Supabase SQL Editor.
+- **Blog:** `/admin/blog` writes Markdown articles (draft / published) shown at
+  `/blog`. One-time setup: run `migrations/2026-09-26-blog.sql`.
+
+## SEO
+
+- `public-portal/api/seo.js` (Vercel function) serves `/jobs/:id` and
+  `/blog/:slug` with page-specific title, description, canonical URL, Open
+  Graph tags, JSON-LD (JobPosting / NewsArticle / BlogPosting / BreadcrumbList)
+  and a plain-HTML summary, so search engines and WhatsApp/Telegram previews
+  see real content. Rendering lives in `public-portal/seo/render.js`.
+- `public-portal/api/sitemap.js` serves `/sitemap.xml` with every published
+  job and article; `robots.txt` is generated at build time.
+- Job URLs carry the title (`/jobs/123-ssc-cgl-2026`); the leading number is
+  what is looked up, so older `/jobs/123` links keep working.
 
 ## API
 

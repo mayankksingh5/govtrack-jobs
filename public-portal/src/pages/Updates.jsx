@@ -5,7 +5,7 @@ import Breadcrumbs from '../components/Breadcrumbs.jsx';
 import FilterBar from '../components/FilterBar.jsx';
 import Icon from '../components/Icon.jsx';
 import Pagination from '../components/Pagination.jsx';
-import SEO from '../components/SEO.jsx';
+import SEO, { breadcrumbSchema, itemListSchema } from '../components/SEO.jsx';
 import { EmptyState, ErrorState, PageSkeleton } from '../components/States.jsx';
 import { Badge } from '../components/UI.jsx';
 import { useRequest } from '../hooks/useRequest.js';
@@ -13,6 +13,7 @@ import { applyFilterBar, newestFirst, organizationsIn, paginate } from '../lib/f
 import { displayDate, orgMarkFor, statusOf, timeAgo } from '../lib/jobs.js';
 import { sectorOf } from '../lib/sectors.js';
 import { organizationFor, titleFor } from '../utils.js';
+import { jobPath } from '../lib/slug.js';
 
 const PAGE_SIZE = 12;
 
@@ -81,7 +82,12 @@ export default function Updates({ kind }) {
 
   return (
     <main className="listing-page">
-      <SEO title={config.title} description={config.description} path={`/${kind}`} />
+      <SEO
+        title={`${config.title} ${new Date().getFullYear()}`}
+        description={config.description}
+        path={`/${kind}`}
+        schema={[breadcrumbSchema([{ name: config.label, path: `/${kind}` }]), itemListSchema(config.title, matched)]}
+      />
       <div className="container">
         <Breadcrumbs items={[{ label: config.label }]} />
         <div className="listing-title">
@@ -101,7 +107,7 @@ export default function Updates({ kind }) {
           <>
             <div className="result-grid">
               {shown.items.map((job) => (
-                <Link className="result-card" key={job.id} to={`/jobs/${job.id}`}>
+                <Link className="result-card" key={job.id} to={jobPath(job)}>
                   <span className={`mini-mark sector-${sectorOf(job)}`}>{orgMarkFor(job)}</span>
                   <span>
                     <Badge status={statusOf(job)} />

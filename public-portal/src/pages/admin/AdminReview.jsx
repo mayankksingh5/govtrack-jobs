@@ -10,6 +10,7 @@ import { useRequest } from '../../hooks/useRequest.js';
 import { statusOf, timeAgo } from '../../lib/jobs.js';
 import { sectorOf } from '../../lib/sectors.js';
 import { TYPE_LABELS } from './AdminDashboard.jsx';
+import { jobPath } from '../../lib/slug.js';
 
 // Blank form for "Add a job" (/admin/posts/new).
 const NEW_POST = { id: null, type: 'job', status: 'pending', raw_title: '', url: '', source_name: '', important_links: [] };
@@ -200,7 +201,7 @@ export default function AdminReview() {
                 )}
               </div>
               {message.text && <p className={`form-message ${message.error ? 'error' : ''}`} role="status">{message.text}</p>}
-              {post.status === 'published' && <small><Link className="text-link" to={`/jobs/${post.id}`}>View live page</Link></small>}
+              {post.status === 'published' && <small><Link className="text-link" to={jobPath(post)}>View live page</Link></small>}
             </div>
           </aside>
         </div>
