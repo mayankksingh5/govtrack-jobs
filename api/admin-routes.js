@@ -147,6 +147,29 @@ router.get(
   })
 );
 
+/* Quick status change from the review list (reject / back to pending) without
+   touching the editorial fields. Publishing goes through PUT /posts/:id,
+   which checks the details first. */
+router.put(
+  '/posts/:id/status',
+  asyncRoute(async (req, res) => {
+    const status = req.body?.status;
+    if (!['pending', 'rejected'].includes(status)) {
+      throw new ApiError(400, 'INVALID_INPUT', 'status must be pending or rejected');
+    }
+    const result = assertResult(
+      await getRecommendationDb()
+        .from('posts')
+        .update({ status })
+        .eq('id', postId(req.params.id))
+        .select('id, status')
+        .maybeSingle()
+    );
+    if (!result.data) throw new ApiError(404, 'POST_NOT_FOUND', 'Post not found');
+    res.json({ success: true, data: [result.data] });
+  })
+);
+
 router.put(
   '/posts/:id',
   asyncRoute(async (req, res) => {

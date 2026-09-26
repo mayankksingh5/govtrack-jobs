@@ -20,7 +20,9 @@
     "name": "IBPS",
     "url": "https://www.ibps.in/",
     "enabled": true,
-    "insecureTLS": true
+    "insecureTLS": true,
+    "exclude": "^(RECRUITMENT EXAMS|Personnel Selection Services)|Promotion for the post",
+    "_note": "exclude: site menu links and internal staff-promotion drives (not open to the public)."
   },
   {
     "id": "rrb-apply",
@@ -134,7 +136,9 @@
     "name": "RBI",
     "url": "https://opportunities.rbi.org.in/Scripts/Vacancies.aspx",
     "enabled": true,
-    "insecureTLS": true
+    "insecureTLS": true,
+    "exclude": "^Extension of last date",
+    "_note": "exclude: last-date extension notices repeat an existing advertisement; update its last date in /admin instead."
   },
   {
     "id": "nta",

@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Link, useSearchParams } from 'react-router-dom';
-import { getAdminPosts, getAdminSummary } from '../../api.js';
+import { getAdminPosts, getAdminSummary, setAdminPostStatus } from '../../api.js';
 import { useAuth } from '../../auth/AuthContext.jsx';
 import Breadcrumbs from '../../components/Breadcrumbs.jsx';
 import Icon from '../../components/Icon.jsx';
@@ -57,6 +57,22 @@ export default function AdminDashboard() {
   const sources = summary.data?.data?.[0]?.sources || [];
   const failing = sources.filter((run) => !run.ok).length;
 
+  const [busy, setBusy] = useState(null);
+  const [actionError, setActionError] = useState('');
+  const changeStatus = async (id, next) => {
+    setBusy(id);
+    setActionError('');
+    try {
+      await setAdminPostStatus(id, next);
+      posts.reload();
+      summary.reload();
+    } catch (error) {
+      setActionError(error.message);
+    } finally {
+      setBusy(null);
+    }
+  };
+
   const go = (changes) => {
     const next = new URLSearchParams(params);
     Object.entries(changes).forEach(([key, value]) => (value ? next.set(key, value) : next.delete(key)));
@@ -105,10 +121,12 @@ export default function AdminDashboard() {
             />
             {posts.loading ? <PageSkeleton /> : posts.error ? <ErrorState message={posts.error} retry={posts.reload} /> : posts.data.data.length ? (
               <>
+                {actionError && <p className="form-message error" role="alert">{actionError}</p>}
                 {posts.data.data.map((post) => {
                   const seen = parseDate(post.first_seen_at);
+                  const reviewPath = `/admin/posts/${post.id}`;
                   return (
-                    <Link className="calendar-list-row" key={post.id} to={`/admin/posts/${post.id}`}>
+                    <div className="calendar-list-row admin-row" key={post.id}>
                       <span className="date-block">
                         <strong>{seen ? seen.getDate() : '—'}</strong>
                         <small>{seen ? MONTHS_SHORT[seen.getMonth()].toUpperCase() : ''}</small>
@@ -116,15 +134,36 @@ export default function AdminDashboard() {
                       <span className="mini-mark">{orgMarkFor({ organization: post.organization || post.source_name })}</span>
                       <span className="cal-main">
                         <Badge status={TYPE_LABELS[post.type] || 'Other'} />
-                        <strong>{post.title || post.raw_title}</strong>
-                        <small>{post.source_name} · #{post.id}</small>
+                        <Link to={reviewPath}><strong>{post.title || post.raw_title}</strong></Link>
+                        <small>{post.source_name} · #{post.id} · {status === 'published' ? `published ${displayDate(post.published_at)}` : `found ${timeAgo(post.first_seen_at)}`}</small>
                       </span>
-                      <span className="cal-app">
-                        <small>{status === 'published' ? 'PUBLISHED' : 'FIRST SEEN'}</small>
-                        <strong>{displayDate(status === 'published' ? post.published_at : post.first_seen_at)} · {timeAgo(post.first_seen_at)}</strong>
+                      <span className="admin-row-actions">
+                        {status === 'published' ? (
+                          <>
+                            <Link className="button secondary" to={`/jobs/${post.id}`}>View</Link>
+                            <Link className="button primary" to={reviewPath}>Edit</Link>
+                          </>
+                        ) : (
+                          <>
+                            {post.url && (
+                              <a className="button secondary" href={post.url} target="_blank" rel="noopener noreferrer">
+                                Source <Icon name="external" size={13} />
+                              </a>
+                            )}
+                            {status === 'pending' ? (
+                              <button className="button secondary danger" disabled={busy === post.id} onClick={() => changeStatus(post.id, 'rejected')}>
+                                Reject
+                              </button>
+                            ) : (
+                              <button className="button secondary" disabled={busy === post.id} onClick={() => changeStatus(post.id, 'pending')}>
+                                Restore
+                              </button>
+                            )}
+                            <Link className="button primary" to={reviewPath}>Review</Link>
+                          </>
+                        )}
                       </span>
-                      <Icon name="chevron" size={18} />
-                    </Link>
+                    </div>
                   );
                 })}
                 <Pagination page={posts.data.page} pages={posts.data.pages} onChange={(value) => go({ page: String(value) })} />

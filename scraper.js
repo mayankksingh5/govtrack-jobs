@@ -311,10 +311,12 @@ ${diagnosis.recommendation}`);
 
       let inserted = [];
       let duplicates = [];
+      let autoRejected = [];
       if (db && items.length) {
         const result = await insertNew(db, items);
         inserted = result.inserted;
         duplicates = result.duplicates;
+        autoRejected = result.autoRejected;
         // Parsed PDF data is only written to logs/, so scheduled CI runs skip
         // it (SCRAPER_PARSE_PDFS=false) to save Actions minutes.
         if (PARSE_PDFS) {
@@ -331,7 +333,7 @@ ${diagnosis.recommendation}`);
 
       console.log(
         `ok   ${source.id.padEnd(20)} found=${String(items.length).padStart(3)} ` +
-          `new=${inserted.length} duplicates=${duplicates.length}`
+          `new=${inserted.length} duplicates=${duplicates.length} old_auto_rejected=${autoRejected.length}`
       );
       runLog.push({
         source_id: source.id,
@@ -503,9 +505,30 @@ function makeDb() {
   return createClient(url, key, { auth: { persistSession: false } });
 }
 
+/*
+  Finds whose title and URL mention only past years (e.g. 2024 result lists,
+  Jan-2025 verification lists) are stored as `rejected`: they never reach the
+  review queue, but stay in the table so the duplicate check keeps them out.
+  Query strings are ignored because they carry numeric IDs and timestamps.
+  In January the previous year still counts as current.
+*/
+function isStale(item, now = new Date()) {
+  let path = item.url;
+  try {
+    path = decodeURIComponent(new URL(item.url).pathname);
+  } catch {}
+  const current = now.getFullYear();
+  const years = (`${item.raw_title} ${path}`.match(/20\d{2}/g) || [])
+    .map(Number)
+    .filter((year) => year >= 2010 && year <= current + 1);
+  if (!years.length) return false;
+  return Math.max(...years) < (now.getMonth() === 0 ? current - 1 : current);
+}
+
 async function insertNew(db, items) {
   const inserted = [];
   const duplicates = [];
+  const autoRejected = [];
   const pdfCandidates = [];
 
   for (const item of items) {
@@ -517,13 +540,18 @@ async function insertNew(db, items) {
       continue;
     }
 
+    const stale = isStale(item);
     const { data, error } = await db
       .from('posts')
-      .upsert(item, { onConflict: 'fingerprint', ignoreDuplicates: true })
+      .upsert({ ...item, status: stale ? 'rejected' : 'pending' }, { onConflict: 'fingerprint', ignoreDuplicates: true })
       .select('id, raw_title, url, type, source_name');
     if (error) throw new Error(`DB: ${error.message}`);
 
     if (data?.length) {
+      if (stale) {
+        autoRejected.push(...data);
+        continue;
+      }
       inserted.push(...data);
       if (isPdfUrl(item.url)) pdfCandidates.push({ jobId: data[0].id, item });
       continue;
@@ -545,7 +573,7 @@ async function insertNew(db, items) {
     }
   }
 
-  return { inserted, duplicates, pdfCandidates };
+  return { inserted, duplicates, autoRejected, pdfCandidates };
 }
 
 async function processPdfCandidates(candidates, source) {
@@ -731,4 +759,4 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   });
 }
 
-export { harvestLinks, classify, fp, normalizeText, titleSimilarity };
+export { harvestLinks, classify, fp, isStale, normalizeText, titleSimilarity };

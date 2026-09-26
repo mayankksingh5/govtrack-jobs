@@ -94,3 +94,7 @@ export const getAdminPost = async (id) =>
   DEMO ? demo('getAdminPost', id) : (await client.get(`/api/admin/posts/${id}`)).data;
 export const updateAdminPost = async (id, changes) =>
   DEMO ? demo('updateAdminPost', id, changes) : (await client.put(`/api/admin/posts/${id}`, changes)).data;
+export const setAdminPostStatus = async (id, status) =>
+  DEMO
+    ? demo('updateAdminPost', id, { status })
+    : (await client.put(`/api/admin/posts/${id}/status`, { status })).data;
