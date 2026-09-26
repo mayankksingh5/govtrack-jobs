@@ -16,6 +16,7 @@ const NAV = [
   ['Exam Calendar', '/exam-calendar'],
   ['Syllabus', '/syllabus'],
   ['Community', '/community'],
+  ['Blog', '/blog'],
 ];
 
 function Logo() {

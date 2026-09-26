@@ -13,13 +13,14 @@ import { sectorOf } from '../lib/sectors.js';
 import { organizationFor, titleFor } from '../utils.js';
 import Icon from './Icon.jsx';
 import { Badge, OrgMark, SectorBadge, ViewDetailsButton } from './UI.jsx';
+import { jobPath } from '../lib/slug.js';
 
 function JobCard({ job }) {
   const sector = sectorOf(job);
   const status = statusOf(job);
   const official = officialLinkFor(job);
   const notification = notificationLinkFor(job);
-  const detailPath = `/jobs/${job.id}`;
+  const detailPath = jobPath(job);
   return (
     <article className={`job-card sector-accent sector-${sector}`}>
       <div className="job-card-top">
@@ -81,7 +82,7 @@ export function CompactCard({ job }) {
     ? `Expected: ${displayDate(job.apply_start, 'To be announced')}`
     : `Posted ${timeAgo(job.published_at) || 'recently'}`;
   return (
-    <Link className={`compact-card sector-accent sector-${sector}`} to={`/jobs/${job.id}`}>
+    <Link className={`compact-card sector-accent sector-${sector}`} to={jobPath(job)}>
       <span className={`mini-mark sector-${sector}`}>{orgMarkFor(job)}</span>
       <span>
         <Badge status={status} />

@@ -72,6 +72,23 @@ const questions = [
   { id: 3, job_id: 2, name: 'Suresh', message: 'Will the NTPC exam be held in Hindi as well?', answer: null, status: 'pending', created_at: stamp(0), answered_at: null },
 ];
 
+const blog = [
+  {
+    id: 1,
+    slug: 'ssc-cgl-2026-preparation-plan',
+    title: 'SSC CGL 2026: A 60-Day Preparation Plan for Tier I',
+    excerpt: 'Section-wise plan, mock test routine and the official links you need before the Tier I exam.',
+    body: '## Exam pattern at a glance\n\nTier I has **four sections** of 25 questions each:\n\n- General Intelligence & Reasoning\n- General Awareness\n- Quantitative Aptitude\n- English Comprehension\n\n## Weekly routine\n\n1. Two full mock tests\n2. Daily 30 minutes of current affairs\n3. Revise mistakes every Sunday\n\nAlways check dates on the [official SSC website](https://ssc.gov.in/).',
+    cover_image_url: null,
+    tags: ['SSC', 'CGL', 'Preparation'],
+    related_job_id: 3,
+    status: 'published',
+    published_at: stamp(-1),
+    updated_at: stamp(-1),
+  },
+  { id: 2, slug: 'draft-railway-alp-guide', title: 'Railway ALP 2026: Complete Guide (draft)', excerpt: null, body: 'Work in progress…', cover_image_url: null, tags: ['Railway'], related_job_id: 2, status: 'draft', published_at: null, updated_at: stamp(0) },
+];
+
 const DEMO_ADMIN = { user_id: '00000000-0000-4000-8000-000000000001', name: 'Demo Admin', email: 'admin@example.com', role: 'admin' };
 
 export const demoApi = {
@@ -125,6 +142,21 @@ export const demoApi = {
     return page([job], { limit: 1 });
   },
   getStatistics: () => page([{ published_jobs: records.length, by_category: {} }]),
+  getBlogPosts: (params = {}) => ({ ...page(blog.filter((post) => post.status === 'published'), params), meta: { enabled: true } }),
+  getBlogPost: (slug) => {
+    const post = blog.find((item) => item.slug === slug && item.status === 'published');
+    if (!post) throw new Error('Article not found');
+    return page([{ ...post, related_job: records.find((job) => job.id === post.related_job_id) || null }], { limit: 1 });
+  },
+  getAdminBlogPosts: () => ({ ...page(blog, { limit: 200 }), meta: { enabled: true } }),
+  getAdminBlogPost: (id) => page([blog.find((item) => String(item.id) === String(id))], { limit: 1 }),
+  saveAdminBlogPost: (id, article) => {
+    const slug = article.slug || String(article.title).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    const existing = blog.find((item) => String(item.id) === String(id));
+    const saved = { ...(existing || { id: blog.length + 1 }), ...article, slug, tags: String(article.tags || '').split(',').map((t) => t.trim()).filter(Boolean), published_at: article.status === 'published' ? existing?.published_at || new Date().toISOString() : null, updated_at: new Date().toISOString() };
+    if (existing) Object.assign(existing, saved); else blog.push(saved);
+    return page([saved], { limit: 1 });
+  },
   getLatestQuestions: (limit = 30) => ({
     ...page(
       questions

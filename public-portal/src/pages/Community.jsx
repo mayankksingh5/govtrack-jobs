@@ -7,6 +7,7 @@ import { EmptyState, ErrorState, PageSkeleton } from '../components/States.jsx';
 import { SectionHeading } from '../components/UI.jsx';
 import { useRequest } from '../hooks/useRequest.js';
 import { displayDate } from '../lib/jobs.js';
+import { jobPath } from '../lib/slug.js';
 
 /* Latest approved questions from every job page, in one place. */
 export default function Community() {
@@ -37,7 +38,7 @@ export default function Community() {
                 <article className="question" key={question.id}>
                   <p className="question-meta">
                     <strong>{question.name}</strong> · {displayDate(question.created_at)} · on{' '}
-                    <Link className="text-link" to={`/jobs/${question.job_id}`}>{question.job_title || 'this job'}</Link>
+                    <Link className="text-link" to={jobPath({ id: question.job_id, title: question.job_title })}>{question.job_title || 'this job'}</Link>
                   </p>
                   <p className="question-text">{question.message}</p>
                   {question.answer && (

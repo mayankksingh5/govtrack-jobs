@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { daysUntil, MONTHS_SHORT, parseDate } from '../lib/jobs.js';
 import { titleFor } from '../utils.js';
 import Icon from './Icon.jsx';
+import { jobPath } from '../lib/slug.js';
 
 const monthShort = (date) => MONTHS_SHORT[date.getMonth()].toUpperCase();
 
@@ -27,7 +28,7 @@ export default function ExamCalendarMini({ jobs, calendarPath = '/exam-calendar'
       {upcoming.length ? upcoming.map((job) => {
         const date = parseDate(job.exam_date);
         return (
-          <Link className="calendar-event" key={job.id} to={`/jobs/${job.id}`}>
+          <Link className="calendar-event" key={job.id} to={jobPath(job)}>
             <span>
               {String(date.getDate()).padStart(2, '0')}
               <small>{monthShort(date)}</small>

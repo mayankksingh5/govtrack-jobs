@@ -12,6 +12,7 @@ import { applyFilterBar, organizationsIn } from '../lib/filters.js';
 import { displayDate, orgMarkFor, parseDate, statusOf } from '../lib/jobs.js';
 import { sectorOf } from '../lib/sectors.js';
 import { organizationFor, titleFor } from '../utils.js';
+import { jobPath } from '../lib/slug.js';
 
 const monthKey = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
 const monthLabel = (key, style = 'long') => {
@@ -119,7 +120,7 @@ export default function Calendar() {
                 const date = parseDate(job.exam_date);
                 const sector = sectorOf(job);
                 return (
-                  <Link className="calendar-list-row" key={job.id} to={`/jobs/${job.id}`}>
+                  <Link className="calendar-list-row" key={job.id} to={jobPath(job)}>
                     <span className="date-block">
                       <strong>{date.getDate()}</strong>
                       <small>{date.toLocaleDateString('en-IN', { month: 'short' }).toUpperCase()}</small>

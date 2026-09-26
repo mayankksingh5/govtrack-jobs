@@ -5,7 +5,7 @@ import Breadcrumbs from '../components/Breadcrumbs.jsx';
 import ExamCalendarMini from '../components/ExamCalendarMini.jsx';
 import Icon from '../components/Icon.jsx';
 import JobCard, { CompactCard } from '../components/JobCard.jsx';
-import SEO from '../components/SEO.jsx';
+import SEO, { breadcrumbSchema, itemListSchema } from '../components/SEO.jsx';
 import { EmptyState, ErrorState, PageSkeleton } from '../components/States.jsx';
 import { SectionHeading, SectorFilter } from '../components/UI.jsx';
 import { useRequest } from '../hooks/useRequest.js';
@@ -58,9 +58,13 @@ export default function Category() {
   return (
     <main className={`sector-context sector-${slug}`}>
       <SEO
-        title={`${meta.label} Jobs & Exams`}
-        description={`${meta.description}: active application forms, upcoming notifications, admit cards and results from official sources.`}
+        title={`${meta.label} Jobs & Exams ${new Date().getFullYear()}`}
+        description={`${meta.label} government jobs ${new Date().getFullYear()}: active application forms, upcoming notifications, admit cards and results from official sources.`}
         path={`/category/${slug}`}
+        schema={[
+          breadcrumbSchema([{ name: meta.label, path: `/category/${slug}` }]),
+          itemListSchema(`${meta.label} Jobs & Exams`, records),
+        ]}
       />
       <section className="page-hero sector-header">
         <div className="container">

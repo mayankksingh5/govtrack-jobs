@@ -7,6 +7,7 @@ import { EmptyState, ErrorState, PageSkeleton } from '../../components/States.js
 import { SectionHeading } from '../../components/UI.jsx';
 import { useRequest } from '../../hooks/useRequest.js';
 import { timeAgo } from '../../lib/jobs.js';
+import { jobPath } from '../../lib/slug.js';
 
 const TABS = [['pending', 'Waiting'], ['approved', 'Approved'], ['rejected', 'Rejected']];
 
@@ -26,7 +27,7 @@ function QuestionRow({ question, status, onSaved }) {
     <article className="question admin-question">
       <p className="question-meta">
         <strong>{question.name}</strong> · {timeAgo(question.created_at)} · on{' '}
-        <Link className="text-link" to={`/jobs/${question.job_id}`}>{question.job_title || `job #${question.job_id}`}</Link>
+        <Link className="text-link" to={jobPath({ id: question.job_id, title: question.job_title })}>{question.job_title || `job #${question.job_id}`}</Link>
       </p>
       <p className="question-text">{question.message}</p>
       <label className="field">

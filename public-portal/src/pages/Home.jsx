@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { getJobs } from '../api.js';
+import { getJobs, SITE_URL } from '../api.js';
 import Icon from '../components/Icon.jsx';
 import JobCard, { CompactCard } from '../components/JobCard.jsx';
 import SearchBar from '../components/SearchBar.jsx';
@@ -12,6 +12,7 @@ import { newestFirst } from '../lib/filters.js';
 import { daysUntil, displayDate, isOpen, orgMarkFor, parseDate, statusOf, timeAgo, vacanciesFor } from '../lib/jobs.js';
 import { HOME_SECTORS, POPULAR_SECTORS, SECTORS, sectorOf } from '../lib/sectors.js';
 import { titleFor } from '../utils.js';
+import { jobPath } from '../lib/slug.js';
 
 const STATUSES = ['All', 'Upcoming', 'Active', 'Closing Soon', 'Admit Card', 'Exam', 'Answer Key', 'Result', 'Cut Off'];
 
@@ -77,7 +78,7 @@ function SideUpdates({ updates, closing }) {
           <span className="live-dot" />
         </div>
         {updates.length ? updates.map((job) => (
-          <Link className="update-row" key={job.id} to={`/jobs/${job.id}`}>
+          <Link className="update-row" key={job.id} to={jobPath(job)}>
             <span className={`mini-mark sector-${sectorOf(job)}`}>{orgMarkFor(job)}</span>
             <span>
               <Badge status={statusOf(job)} />
@@ -104,7 +105,7 @@ function SideUpdates({ updates, closing }) {
         {closing.length ? closing.map((job) => {
           const days = daysUntil(job.last_date);
           return (
-            <Link className="deadline-row" key={job.id} to={`/jobs/${job.id}`}>
+            <Link className="deadline-row" key={job.id} to={jobPath(job)}>
               <span className={days <= 2 ? 'hot' : ''}>
                 {days}
                 <small>{days === 1 ? 'DAY' : 'DAYS'}</small>
@@ -176,7 +177,30 @@ export default function Home() {
 
   return (
     <>
-      <SEO title="" description="Government jobs and exams in one place: upcoming notifications, active forms, admit cards, results and exam dates from official sources." />
+      <SEO
+        title=""
+        description="Government jobs and exams in one place: upcoming notifications, active forms, admit cards, results and exam dates from official sources."
+        schema={[
+          {
+            '@context': 'https://schema.org',
+            '@type': 'WebSite',
+            name: 'GovTrack Jobs',
+            url: SITE_URL,
+            potentialAction: {
+              '@type': 'SearchAction',
+              target: { '@type': 'EntryPoint', urlTemplate: `${SITE_URL}/search?q={search_term_string}` },
+              'query-input': 'required name=search_term_string',
+            },
+          },
+          {
+            '@context': 'https://schema.org',
+            '@type': 'Organization',
+            name: 'GovTrack Jobs',
+            url: SITE_URL,
+            logo: `${SITE_URL}/favicon.svg`,
+          },
+        ]}
+      />
       <SearchHero />
       <StatRow stats={view?.stats || {}} />
       {loading ? <PageSkeleton /> : error ? (

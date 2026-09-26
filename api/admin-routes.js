@@ -4,6 +4,7 @@ import { requireAuth, requireRole } from './auth-middleware.js';
 import { getRecommendationDb } from './db.js';
 import { ApiError, asyncRoute } from './middleware.js';
 import { isMissingTable } from './question-routes.js';
+import { BLOG_LIST_FIELDS } from './blog-routes.js';
 
 /*
   Editorial review for scraped records. Every scraped post starts as
@@ -263,6 +264,90 @@ router.put(
     }
 
     const result = assertResult(await db.from('posts').update(changes).eq('id', id).select(FIELDS).single());
+    res.json({ success: true, data: [result.data] });
+  })
+);
+
+/* Blog articles (drafts and published). */
+function blogFields(body = {}) {
+  const title = text(body.title, 'Title', 200);
+  if (!title || title.length < 5) throw new ApiError(400, 'INVALID_INPUT', 'Title must be at least 5 characters');
+  const slug = text(body.slug, 'Slug', 120) ? slugify(body.slug) : slugify(title);
+  if (!slug) throw new ApiError(400, 'INVALID_INPUT', 'Slug must contain letters or numbers');
+  const cover = text(body.cover_image_url, 'Cover image URL', 1000);
+  if (cover && !/^https:\/\/\S+$/i.test(cover)) throw new ApiError(400, 'INVALID_INPUT', 'Cover image URL must start with https://');
+  const status = body.status ?? 'draft';
+  if (!['draft', 'published'].includes(status)) throw new ApiError(400, 'INVALID_INPUT', 'status must be draft or published');
+  const tags = Array.isArray(body.tags) ? body.tags : String(body.tags || '').split(',');
+  const bodyText = String(body.body ?? '');
+  if (bodyText.length > 50_000) throw new ApiError(400, 'INVALID_INPUT', 'Article is too long (max 50,000 characters)');
+  return {
+    title,
+    slug,
+    excerpt: text(body.excerpt, 'Excerpt', 300),
+    body: bodyText,
+    cover_image_url: cover,
+    tags: [...new Set(tags.map((tag) => String(tag).trim()).filter(Boolean))].slice(0, 10).map((tag) => tag.slice(0, 40)),
+    related_job_id: body.related_job_id === '' || body.related_job_id == null ? null : postId(body.related_job_id),
+    status,
+  };
+}
+
+const blogResult = (result) => {
+  if (result.error?.code === '23505') throw new ApiError(409, 'SLUG_TAKEN', 'Another article already uses this web address (slug)');
+  if (result.error?.code === '23503') throw new ApiError(400, 'INVALID_INPUT', 'Related job ID does not exist');
+  return assertResult(result);
+};
+
+router.get(
+  '/blog',
+  asyncRoute(async (_req, res) => {
+    const { data, error } = await getRecommendationDb()
+      .from('blog_posts')
+      .select(BLOG_LIST_FIELDS)
+      .order('updated_at', { ascending: false })
+      .limit(200);
+    if (isMissingTable(error)) return res.json({ success: true, total: 0, data: [], meta: { enabled: false } });
+    assertResult({ error });
+    res.json({ success: true, total: data.length, data, meta: { enabled: true } });
+  })
+);
+
+router.get(
+  '/blog/:id',
+  asyncRoute(async (req, res) => {
+    const result = assertResult(
+      await getRecommendationDb().from('blog_posts').select(`${BLOG_LIST_FIELDS}, body`).eq('id', postId(req.params.id)).maybeSingle()
+    );
+    if (!result.data) throw new ApiError(404, 'ARTICLE_NOT_FOUND', 'Article not found');
+    res.json({ success: true, data: [result.data] });
+  })
+);
+
+router.post(
+  '/blog',
+  asyncRoute(async (req, res) => {
+    const fields = blogFields(req.body);
+    if (fields.status === 'published') fields.published_at = new Date().toISOString();
+    const result = blogResult(
+      await getRecommendationDb().from('blog_posts').insert(fields).select(`${BLOG_LIST_FIELDS}, body`).single()
+    );
+    res.status(201).json({ success: true, data: [result.data] });
+  })
+);
+
+router.put(
+  '/blog/:id',
+  asyncRoute(async (req, res) => {
+    const id = postId(req.params.id);
+    const db = getRecommendationDb();
+    const current = assertResult(await db.from('blog_posts').select('id, published_at').eq('id', id).maybeSingle()).data;
+    if (!current) throw new ApiError(404, 'ARTICLE_NOT_FOUND', 'Article not found');
+    const fields = blogFields(req.body);
+    if (fields.status === 'published') fields.published_at = current.published_at || new Date().toISOString();
+    const result = blogResult(
+      await db.from('blog_posts').update(fields).eq('id', id).select(`${BLOG_LIST_FIELDS}, body`).single()
+    );
     res.json({ success: true, data: [result.data] });
   })
 );

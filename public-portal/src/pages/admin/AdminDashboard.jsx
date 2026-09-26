@@ -10,6 +10,7 @@ import { EmptyState, ErrorState, PageSkeleton } from '../../components/States.js
 import { Badge, SectionHeading } from '../../components/UI.jsx';
 import { useRequest } from '../../hooks/useRequest.js';
 import { displayDate, MONTHS_SHORT, orgMarkFor, parseDate, timeAgo } from '../../lib/jobs.js';
+import { jobPath } from '../../lib/slug.js';
 
 export const TYPE_LABELS = { job: 'Job', admit_card: 'Admit Card', result: 'Result', answer_key: 'Answer Key', other: 'Other' };
 const TABS = [['pending', 'Pending review'], ['published', 'Published'], ['rejected', 'Rejected']];
@@ -93,6 +94,7 @@ export default function AdminDashboard() {
           </div>
           <div className="admin-header-actions">
             <Link className="button primary" to="/admin/posts/new">+ Add job</Link>
+            <Link className="button secondary" to="/admin/blog">Blog</Link>
             <Link className="button secondary" to="/admin/questions">
               Questions{summary.data?.data?.[0]?.pending_questions ? ` (${summary.data.data[0].pending_questions})` : ''}
             </Link>
@@ -146,7 +148,7 @@ export default function AdminDashboard() {
                       <span className="admin-row-actions">
                         {status === 'published' ? (
                           <>
-                            <Link className="button secondary" to={`/jobs/${post.id}`}>View</Link>
+                            <Link className="button secondary" to={jobPath(post)}>View</Link>
                             <Link className="button primary" to={reviewPath}>Edit</Link>
                           </>
                         ) : (
