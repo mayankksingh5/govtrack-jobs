@@ -156,7 +156,6 @@ function Footer() {
             <Link to="/terms">Terms</Link>
             <Link to="/disclaimer">Disclaimer</Link>
           </nav>
-          <span>© {new Date().getFullYear()} GovTrack Jobs</span>
         </div>
       </div>
     </footer>
