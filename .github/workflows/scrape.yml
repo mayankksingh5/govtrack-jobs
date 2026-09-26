@@ -33,3 +33,6 @@ jobs:
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          # PDF parsing took most of the ~8 min run and its output only goes
+          # to a log file that the runner discards.
+          SCRAPER_PARSE_PDFS: 'false'

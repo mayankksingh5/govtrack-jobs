@@ -33,6 +33,7 @@ const UA =
 
 const TIMEOUT_MS = 25_000;
 const RETRIES = 2;
+const PARSE_PDFS = process.env.SCRAPER_PARSE_PDFS !== 'false';
 const YEARS = [new Date().getFullYear(), new Date().getFullYear() - 1];
 
 // Sarkari sites ka SSL aksar toota hua hota hai. Ye agent sirf un
@@ -314,11 +315,15 @@ ${diagnosis.recommendation}`);
         const result = await insertNew(db, items);
         inserted = result.inserted;
         duplicates = result.duplicates;
-        const pdfResult = await processPdfCandidates(result.pdfCandidates, source);
-        pdfsFound += pdfResult.found;
-        pdfsParsed += pdfResult.parsed;
-        pdfsFailed += pdfResult.failed;
-        pdfConfidenceTotal += pdfResult.confidenceTotal;
+        // Parsed PDF data is only written to logs/, so scheduled CI runs skip
+        // it (SCRAPER_PARSE_PDFS=false) to save Actions minutes.
+        if (PARSE_PDFS) {
+          const pdfResult = await processPdfCandidates(result.pdfCandidates, source);
+          pdfsFound += pdfResult.found;
+          pdfsParsed += pdfResult.parsed;
+          pdfsFailed += pdfResult.failed;
+          pdfConfidenceTotal += pdfResult.confidenceTotal;
+        }
       }
       totalNew += inserted.length;
       totalDuplicates += duplicates.length;
