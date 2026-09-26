@@ -24,7 +24,7 @@ import { createClient } from '@supabase/supabase-js';
 import { dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { isPdfUrl, parsePdfNotification } from './pdf-parser.js';
-import { autoFields, isStale } from './auto-publish.js';
+import { autoFields, ibpsDatesFromPage, isStale } from './auto-publish.js';
 
 // ---------------------------------------------------------------- config
 
@@ -186,6 +186,7 @@ function cleanTitle(t) {
     .split(/\s+Read More\s+/i)[0] // ISRO repeats the whole title after "Read More"
     .replace(/^download\s+/i, '') // DSSSB: "Download VACANCY NOTICE ..."
     .replace(/\s*-?\s*\[(pdf|docx?|xlsx?)\s*,[^\]]*\]\s*$/i, '') // BEL: "- [pdf, 1.21 MB]"
+    .replace(/\s*\(\s*[\d.]+\s*[KM]B\s*\)\s*$/i, '') // SBI: "English (982 KB)"
     .replace(/\bnew icon\b/gi, '')
     .replace(/\s*\|\s*/g, ' | ')
     .replace(/\s*(new|latest|click here|download|view|पीडीएफ)\s*$/i, '')
@@ -531,6 +532,17 @@ async function insertNew(db, items) {
       continue;
     }
 
+    // IBPS registration pages carry the application window; store it.
+    if (/^https?:\/\/ibpsreg\.ibps\.in\//i.test(item.url)) {
+      try {
+        const { html } = await fetchHtml(item.url, { insecureTLS: true });
+        const dates = ibpsDatesFromPage(html);
+        if (dates.apply_start) item.apply_start = dates.apply_start;
+        if (dates.last_date) item.last_date = dates.last_date;
+      } catch (error) {
+        console.warn(`IBPS dates not read for ${item.url}: ${error.message}`);
+      }
+    }
     const fields = autoFields(item);
     const { data, error } = await db
       .from('posts')

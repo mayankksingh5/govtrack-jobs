@@ -18,7 +18,7 @@ import { autoFields } from '../auto-publish.js';
 
 const TYPES = new Set(['job', 'admit_card', 'result', 'answer_key', 'other']);
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
-const ROW_FIELDS = 'id, url, status, raw_title, type, source_name, organization, slug, published_at';
+const ROW_FIELDS = 'id, url, status, title, raw_title, type, source_name, organization, slug, published_at';
 
 const text = (value, max) => (value == null || String(value).trim() === '' ? null : String(value).trim().slice(0, max));
 const date = (value) => (typeof value === 'string' && DATE.test(value) ? value : null);
@@ -53,13 +53,64 @@ export function seedFields(entry) {
   };
 }
 
+/*
+  seed/overrides.json: explicit corrections for rows that already exist,
+  matched by `id` or `url`. Unlike seed/jobs.json these also change rows
+  that are already published (e.g. renaming a vague auto-published title or
+  hiding an old result). Only the keys present in an entry are changed.
+*/
+const OVERRIDE_STATUSES = new Set(['pending', 'published', 'rejected']);
+export function overrideFields(entry) {
+  const fields = {};
+  if ('status' in entry) {
+    if (!OVERRIDE_STATUSES.has(entry.status)) return { error: `bad status ${entry.status}` };
+    fields.status = entry.status;
+  }
+  if ('type' in entry) {
+    if (!TYPES.has(entry.type)) return { error: `bad type ${entry.type}` };
+    fields.type = entry.type;
+  }
+  const texts = { title: 200, organization: 120, post_name: 200, short_info: 500, age_limit: 120, qualification: 300, fee_info: 500 };
+  for (const [key, max] of Object.entries(texts)) if (key in entry) fields[key] = text(entry[key], max);
+  for (const key of ['apply_start', 'last_date', 'exam_date']) {
+    if (!(key in entry)) continue;
+    if (entry[key] !== null && !date(entry[key])) return { error: `bad ${key}` };
+    fields[key] = date(entry[key]);
+  }
+  if ('total_vacancy' in entry) fields.total_vacancy = count(entry.total_vacancy);
+  if ('links' in entry) {
+    fields.important_links = (entry.links || [])
+      .filter((link) => /^https?:\/\/\S+$/i.test(link?.url || ''))
+      .map((link) => ({ label: text(link.label, 80) || 'Official link', url: link.url }));
+  }
+  if (!Object.keys(fields).length) return { error: 'nothing to change' };
+  return { fields };
+}
+
 /* Pure planning step, so it can be tested without a database. */
-export function planImport({ seed = [], rejectUrls = [], rows = [], now = new Date() }) {
+export function planImport({ seed = [], rejectUrls = [], overrides = [], rows = [], now = new Date() }) {
   const ops = [];
   const skipped = [];
   const touched = new Set();
   const byUrl = new Map();
   for (const row of rows) byUrl.set(row.url, [...(byUrl.get(row.url) || []), row]);
+
+  for (const entry of overrides) {
+    const { fields, error } = overrideFields(entry);
+    const label = entry.id ?? entry.url ?? '(no target)';
+    if (error) { skipped.push(`override ${label}: ${error}`); continue; }
+    const targets = entry.id != null ? rows.filter((row) => row.id === entry.id) : byUrl.get(entry.url) || [];
+    if (!targets.length) { skipped.push(`override ${label}: no matching row`); continue; }
+    for (const row of targets) {
+      touched.add(row.id);
+      const change = { ...fields };
+      if (change.status === 'published' || (!('status' in change) && row.status === 'published')) {
+        change.published_at = row.published_at || now.toISOString();
+        change.slug = row.slug || `${slugify(change.title || row.title || row.raw_title)}-${row.id}`;
+      }
+      ops.push({ op: 'update', id: row.id, fields: change });
+    }
+  }
 
   for (const entry of seed) {
     const { fields, error } = seedFields(entry);
@@ -129,6 +180,7 @@ async function main() {
   const read = (file) => JSON.parse(readFileSync(new URL(`../seed/${file}`, import.meta.url), 'utf8'));
   const seed = read('jobs.json');
   const rejectUrls = read('reject-urls.json');
+  const overrides = read('overrides.json');
 
   const { SUPABASE_URL: url, SUPABASE_SERVICE_KEY: key } = process.env;
   if (!url || !key) {
@@ -138,14 +190,17 @@ async function main() {
   const { createClient } = await import('@supabase/supabase-js');
   const db = createClient(url, key, { auth: { persistSession: false } });
 
-  const { ops, skipped } = planImport({ seed, rejectUrls, rows: await loadRows(db) });
-  const tally = { insert: 0, published: 0, rejected: 0 };
+  const { ops, skipped } = planImport({ seed, rejectUrls, overrides, rows: await loadRows(db) });
+  const tally = { insert: 0, published: 0, rejected: 0, pending: 0, edited: 0 };
   for (const op of ops) {
     if (op.op === 'insert') tally.insert++;
-    else tally[op.fields.status] = (tally[op.fields.status] || 0) + 1;
+    else tally[op.fields.status || 'edited']++;
   }
-  console.log(`seed entries: ${seed.length}, reject urls: ${rejectUrls.length}`);
-  console.log(`planned: ${tally.insert} new published, ${tally.published} pending->published, ${tally.rejected} ->rejected`);
+  console.log(`seed entries: ${seed.length}, reject urls: ${rejectUrls.length}, overrides: ${overrides.length}`);
+  console.log(
+    `planned: ${tally.insert} new published, ${tally.published} ->published, ${tally.rejected} ->rejected, ` +
+      `${tally.pending} ->pending, ${tally.edited} edited in place`
+  );
   skipped.forEach((line) => console.warn(`skipped ${line}`));
   if (dry) return;
 
