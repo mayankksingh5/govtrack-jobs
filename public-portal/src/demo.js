@@ -69,6 +69,8 @@ const adminPosts = () => [
 const DEMO_ADMIN = { user_id: '00000000-0000-4000-8000-000000000001', name: 'Demo Admin', email: 'admin@example.com', role: 'admin' };
 
 export const demoApi = {
+  login: () => page([{ access_token: 'demo', expires_in: 3600 }]),
+  logout: () => page([{ logged_out: true }]),
   refreshSession: () => page([{ access_token: 'demo', expires_in: 3600 }]),
   getProfile: () => page([DEMO_ADMIN]),
   getAdminSummary: () =>
@@ -116,6 +118,4 @@ export const demoApi = {
     return page([job], { limit: 1 });
   },
   getStatistics: () => page([{ published_jobs: records.length, by_category: {} }]),
-  getRecommendations: (params = {}) =>
-    page(records.map((job) => ({ ...job, recommendation_score: 60, recommendation_reasons: [{ factor: 'recency' }] })), params),
 };

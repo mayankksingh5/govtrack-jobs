@@ -12,7 +12,7 @@ import {
 import { sectorOf } from '../lib/sectors.js';
 import { organizationFor, titleFor } from '../utils.js';
 import Icon from './Icon.jsx';
-import { Badge, BookmarkButton, OrgMark, SectorBadge, ViewDetailsButton } from './UI.jsx';
+import { Badge, OrgMark, SectorBadge, ViewDetailsButton } from './UI.jsx';
 
 function JobCard({ job }) {
   const sector = sectorOf(job);
@@ -32,7 +32,6 @@ function JobCard({ job }) {
           <h3><Link to={detailPath}>{titleFor(job)}</Link></h3>
           <p>{organizationFor(job)}</p>
         </div>
-        <BookmarkButton jobId={job.id} />
       </div>
       <div className="job-facts">
         <div>

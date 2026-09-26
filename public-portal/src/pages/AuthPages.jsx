@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Helmet } from 'react-helmet-async';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { forgotPassword, resetPassword } from '../api.js';
 import { useAuth } from '../auth/AuthContext.jsx';
@@ -41,13 +42,14 @@ export function LoginPage() {
     setMessage({ text: 'Signing in…' });
     try {
       await login(form);
-      navigate(location.state?.from || '/profile', { replace: true });
+      navigate(location.state?.from || '/admin', { replace: true });
     } catch (error) { setMessage({ text: error.message, error: true }); }
   };
   return (
     <>
-      <SEO title="Login" description="Sign in to manage your profile and saved government jobs." path="/login" />
-      <AuthShell eyebrow="WELCOME BACK" title="Login to GovTrack" description="Sign in to access saved jobs, recent views, and personalized recommendations.">
+      <Helmet><meta name="robots" content="noindex, nofollow" /></Helmet>
+      <SEO title="Admin login" description="Sign in for GovTrack Jobs editors." path="/login" />
+      <AuthShell eyebrow="EDITORS ONLY" title="Admin login" description="GovTrack Jobs is free to browse without an account. This sign-in is for the site's editors.">
         <form className="form-grid" onSubmit={submit}>
           <Field label="Email" type="email" required autoComplete="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
           <Field label="Password" type="password" required autoComplete="current-password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
@@ -55,39 +57,8 @@ export function LoginPage() {
           <Message {...message} />
         </form>
         <div className="form-links">
-          <Link to="/register">Create account</Link>
+          <Link to="/">Back to home</Link>
           <Link to="/forgot-password">Forgot password?</Link>
-        </div>
-      </AuthShell>
-    </>
-  );
-}
-
-export function RegisterPage() {
-  const { register } = useAuth();
-  const [form, setForm] = useState({ name: '', email: '', password: '' });
-  const [message, setMessage] = useState({ text: '' });
-  const submit = async (event) => {
-    event.preventDefault();
-    setMessage({ text: 'Creating account…' });
-    try {
-      const response = await register(form);
-      setMessage({ text: response.data?.[0]?.email_verification_required ? 'Check your email to verify your account.' : 'Account created successfully.' });
-    } catch (error) { setMessage({ text: error.message, error: true }); }
-  };
-  return (
-    <>
-      <SEO title="Register" description="Create your GovTrack Jobs account." path="/register" />
-      <AuthShell eyebrow="JOIN GOVTRACK" title="Create an account" description="Use at least 10 characters with upper-case, lower-case, and a number.">
-        <form className="form-grid" onSubmit={submit}>
-          <Field label="Full name" required autoComplete="name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-          <Field label="Email" type="email" required autoComplete="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
-          <Field label="Password" type="password" required minLength="10" autoComplete="new-password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
-          <button className="button primary">Register</button>
-          <Message {...message} />
-        </form>
-        <div className="form-links">
-          <span>Already registered? <Link to="/login">Login</Link></span>
         </div>
       </AuthShell>
     </>

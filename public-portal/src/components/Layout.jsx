@@ -95,10 +95,13 @@ function Header() {
             <Icon name="bell" />
             <span />
           </Link>
-          <Link className="profile-button" to={user ? '/profile' : '/login'}>
-            <span className="avatar"><Icon name="user" size={17} /></span>
-            <span>{user ? user.name || 'Profile' : 'Login'}</span>
-          </Link>
+          {/* The site is public; only editors sign in, so the account link shows for admins alone. */}
+          {user?.role === 'admin' && (
+            <Link className="profile-button" to="/admin">
+              <span className="avatar"><Icon name="user" size={17} /></span>
+              <span>Admin</span>
+            </Link>
+          )}
           <button
             className="icon-button mobile-menu"
             onClick={() => setMobileOpen((open) => !open)}
@@ -159,14 +162,14 @@ function Footer() {
 }
 
 function BottomNav() {
-  const { user } = useAuth();
   const { pathname } = useLocation();
   const items = [
     ['home', 'Home', '/', (path) => path === '/'],
-    ['briefcase', 'Jobs', '/jobs', (path) => path.startsWith('/jobs') || path.startsWith('/search')],
+    ['briefcase', 'Jobs', '/jobs', (path) => path.startsWith('/jobs')],
     ['exam', 'Exams', '/exams', (path) => path.startsWith('/exam')],
     ['trophy', 'Results', '/results', (path) => path.startsWith('/results')],
-    ['user', 'Profile', user ? '/profile' : '/login', (path) => ['/profile', '/login'].includes(path)],
+    // The header search is hidden on phones, so search takes the last slot.
+    ['search', 'Search', '/search', (path) => path.startsWith('/search')],
   ];
   return (
     <nav className="bottom-nav" aria-label="Quick navigation">

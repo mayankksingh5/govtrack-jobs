@@ -1,12 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { getJob, recordJobActivity, SITE_URL, trackInteraction } from '../api.js';
-import { useAuth } from '../auth/AuthContext.jsx';
+import { getJob, SITE_URL } from '../api.js';
 import Breadcrumbs from '../components/Breadcrumbs.jsx';
 import Icon from '../components/Icon.jsx';
 import SEO from '../components/SEO.jsx';
 import { ErrorState, PageSkeleton } from '../components/States.jsx';
-import { Badge, OrgMark, SectionHeading, SectorBadge, useSaveJob } from '../components/UI.jsx';
+import { Badge, OrgMark, SectionHeading, SectorBadge } from '../components/UI.jsx';
 import { useRequest } from '../hooks/useRequest.js';
 import {
   applyLinkFor,
@@ -129,18 +128,10 @@ function TabContent({ tab, job, title, notification }) {
 
 export default function JobDetails() {
   const { id } = useParams();
-  const { user } = useAuth();
   const [tab, setTab] = useState('Overview');
   const loader = useCallback(async () => (await getJob(id)).data?.[0] || null, [id]);
   const { data: job, loading, error, reload } = useRequest(loader, [loader]);
-  const { saved, save } = useSaveJob(job?.id);
   const left = useCountdown(job?.last_date);
-
-  useEffect(() => {
-    if (!job) return;
-    trackInteraction(job.id, 'viewed').catch(() => {});
-    if (user) recordJobActivity(job.id, 'viewed').catch(() => {});
-  }, [job, user]);
 
   if (loading) return <PageSkeleton />;
   if (error || !job) {
@@ -194,9 +185,6 @@ export default function JobDetails() {
             </div>
           </div>
           <div className="detail-actions">
-            <button className={`button secondary ${saved ? 'saved' : ''}`} onClick={save}>
-              <Icon name="bookmark" size={17} /> {saved ? 'Saved' : 'Save'}
-            </button>
             {apply && (
               <a className="button primary" href={apply} target="_blank" rel="noopener noreferrer">
                 Apply on official site <Icon name="external" size={16} />
