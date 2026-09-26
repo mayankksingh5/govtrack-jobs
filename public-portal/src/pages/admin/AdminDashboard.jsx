@@ -92,7 +92,8 @@ export default function AdminDashboard() {
             <p>Scraped updates wait here until an editor completes the details and publishes them.</p>
           </div>
           <div className="admin-header-actions">
-            <Link className="button primary" to="/admin/questions">
+            <Link className="button primary" to="/admin/posts/new">+ Add job</Link>
+            <Link className="button secondary" to="/admin/questions">
               Questions{summary.data?.data?.[0]?.pending_questions ? ` (${summary.data.data[0].pending_questions})` : ''}
             </Link>
             <button className="button secondary" onClick={logout}>Logout</button>

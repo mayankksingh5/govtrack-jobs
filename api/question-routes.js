@@ -43,6 +43,28 @@ router.get(
   })
 );
 
+/* Community page: latest approved questions across published jobs. */
+router.get(
+  '/questions/latest',
+  asyncRoute(async (req, res) => {
+    const limit = Math.min(50, Math.max(1, Number.parseInt(req.query.limit || '30', 10) || 30));
+    const { data, error } = await getRecommendationDb()
+      .from('job_questions')
+      .select(`${FIELDS}, job_id, posts!inner(title, raw_title, status)`)
+      .eq('status', 'approved')
+      .eq('posts.status', 'published')
+      .order('created_at', { ascending: false })
+      .limit(limit);
+    if (error && !isMissingTable(error)) throw new ApiError(500, 'QUESTIONS_DATABASE_ERROR', 'Unable to load questions');
+    res.json({
+      success: true,
+      total: data?.length || 0,
+      data: (data || []).map(({ posts, ...question }) => ({ ...question, job_title: posts?.title || posts?.raw_title })),
+      meta: { enabled: !error },
+    });
+  })
+);
+
 router.post(
   '/jobs/:id/questions',
   askLimiter,

@@ -125,6 +125,22 @@ export const demoApi = {
     return page([job], { limit: 1 });
   },
   getStatistics: () => page([{ published_jobs: records.length, by_category: {} }]),
+  getLatestQuestions: (limit = 30) => ({
+    ...page(
+      questions
+        .filter((q) => q.status === 'approved')
+        .map((q) => ({ ...q, job_title: records.find((job) => job.id === q.job_id)?.title }))
+        .slice(0, limit),
+      { limit }
+    ),
+    meta: { enabled: true },
+  }),
+  createAdminPost: (post) => {
+    const id = 200 + pending.length;
+    const created = { ...post, id, raw_title: post.title, url: post.important_links?.[0]?.url, source_name: post.organization || 'GovTrack', first_seen_at: new Date().toISOString() };
+    pending.push(created);
+    return page([created], { limit: 1 });
+  },
   getQuestions: (jobId) => ({
     ...page(questions.filter((q) => String(q.job_id) === String(jobId) && q.status === 'approved'), { limit: 100 }),
     meta: { enabled: true },

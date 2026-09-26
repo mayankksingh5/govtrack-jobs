@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { getAdminPost, updateAdminPost } from '../../api.js';
+import { createAdminPost, getAdminPost, updateAdminPost } from '../../api.js';
 import Breadcrumbs from '../../components/Breadcrumbs.jsx';
 import Icon from '../../components/Icon.jsx';
 import { ErrorState, PageSkeleton } from '../../components/States.jsx';
@@ -10,6 +10,9 @@ import { useRequest } from '../../hooks/useRequest.js';
 import { statusOf, timeAgo } from '../../lib/jobs.js';
 import { sectorOf } from '../../lib/sectors.js';
 import { TYPE_LABELS } from './AdminDashboard.jsx';
+
+// Blank form for "Add a job" (/admin/posts/new).
+const NEW_POST = { id: null, type: 'job', status: 'pending', raw_title: '', url: '', source_name: '', important_links: [] };
 
 const DEFAULT_LINK_LABEL = {
   job: 'Official notification',
@@ -53,7 +56,11 @@ function formFor(post) {
 export default function AdminReview() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const loader = useCallback(async () => (await getAdminPost(id)).data?.[0] || null, [id]);
+  const isNew = id === 'new';
+  const loader = useCallback(
+    async () => (isNew ? NEW_POST : (await getAdminPost(id)).data?.[0] || null),
+    [id, isNew]
+  );
   const { data: post, loading, error, reload } = useRequest(loader, [loader]);
   const [form, setForm] = useState(null);
   const [message, setMessage] = useState({ text: '' });
@@ -77,6 +84,10 @@ export default function AdminReview() {
     setSaving(true);
     setMessage({ text: 'Saving…' });
     try {
+      if (isNew) {
+        const created = (await createAdminPost({ ...form, status })).data?.[0];
+        return navigate(`/admin/posts/${created.id}`, { replace: true });
+      }
       const response = await updateAdminPost(post.id, { ...form, status });
       const saved = response.data?.[0];
       if (status === 'rejected') return navigate('/admin', { replace: true });
@@ -92,18 +103,18 @@ export default function AdminReview() {
 
   return (
     <main className="detail-page">
-      <Helmet><title>{`Review #${post.id} | GovTrack Jobs`}</title><meta name="robots" content="noindex, nofollow" /></Helmet>
+      <Helmet><title>{`${isNew ? 'Add a job' : `Review #${post.id}`} | GovTrack Jobs`}</title><meta name="robots" content="noindex, nofollow" /></Helmet>
       <div className="container">
-        <Breadcrumbs items={[{ label: 'Admin', to: '/admin' }, { label: `Review #${post.id}` }]} />
+        <Breadcrumbs items={[{ label: 'Admin', to: '/admin' }, { label: isNew ? 'Add a job' : `Review #${post.id}` }]} />
         <section className={`detail-header sector-context sector-${sector}`}>
           <div className="detail-title-wrap">
             <div>
               <div className="title-meta">
-                <Badge status={post.status === 'published' ? 'Published' : post.status === 'rejected' ? 'Rejected' : 'Pending'} />
-                <Badge status={TYPE_LABELS[post.type] || 'Other'} />
+                <Badge status={isNew ? 'New' : post.status === 'published' ? 'Published' : post.status === 'rejected' ? 'Rejected' : 'Pending'} />
+                <Badge status={TYPE_LABELS[form.type] || 'Other'} />
               </div>
-              <h1>{post.raw_title}</h1>
-              <p>Found on {post.source_name} · {timeAgo(post.first_seen_at)}</p>
+              <h1>{isNew ? 'Add a job, admit card or result' : post.raw_title}</h1>
+              <p>{isNew ? 'Copy the details from the official notification and paste its link below.' : `Found on ${post.source_name} · ${timeAgo(post.first_seen_at)}`}</p>
             </div>
           </div>
           <div className="verification-banner">
@@ -184,7 +195,9 @@ export default function AdminReview() {
                 <button className="button secondary" disabled={saving} onClick={() => save('pending')}>
                   {post.status === 'published' ? 'Unpublish' : 'Save as pending'}
                 </button>
-                <button className="button secondary danger" disabled={saving} onClick={() => save('rejected')}>Reject</button>
+                {!isNew && (
+                  <button className="button secondary danger" disabled={saving} onClick={() => save('rejected')}>Reject</button>
+                )}
               </div>
               {message.text && <p className={`form-message ${message.error ? 'error' : ''}`} role="status">{message.text}</p>}
               {post.status === 'published' && <small><Link className="text-link" to={`/jobs/${post.id}`}>View live page</Link></small>}

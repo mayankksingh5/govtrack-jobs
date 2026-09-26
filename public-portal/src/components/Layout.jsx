@@ -15,6 +15,7 @@ const NAV = [
   ['Cut Off', '/cut-off'],
   ['Exam Calendar', '/exam-calendar'],
   ['Syllabus', '/syllabus'],
+  ['Community', '/community'],
 ];
 
 function Logo() {

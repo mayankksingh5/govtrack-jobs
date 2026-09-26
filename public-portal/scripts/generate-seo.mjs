@@ -24,6 +24,7 @@ const paths = [
   '/answer-keys',
   '/cut-off',
   '/syllabus',
+  '/community',
   ...sectors.map((sector) => `/category/${sector}`),
   '/about',
   '/contact',
