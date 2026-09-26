@@ -21,23 +21,6 @@ client.interceptors.request.use((request) => {
   return request;
 });
 
-let recommendationUserIdOverride = null;
-export const setRecommendationUserId = (value) => {
-  recommendationUserIdOverride = value || null;
-};
-export function getRecommendationUserId() {
-  if (recommendationUserIdOverride) return recommendationUserIdOverride;
-  const key = 'government-jobs-recommendation-user';
-  let value = localStorage.getItem(key);
-  if (!value) {
-    value = crypto.randomUUID();
-    localStorage.setItem(key, value);
-  }
-  return value;
-}
-
-const recommendationHeaders = () => ({ 'X-User-ID': getRecommendationUserId() });
-
 client.interceptors.response.use(
   (response) => response,
   async (error) => {
@@ -79,6 +62,7 @@ client.interceptors.response.use(
 const DEMO = import.meta.env.DEV && import.meta.env.VITE_DEMO_DATA === 'true';
 const demo = async (name, ...args) => (await import('./demo.js')).demoApi[name](...args);
 
+/* Public job data — no account needed. */
 export const getJobs = async (params = {}) =>
   DEMO ? demo('getJobs', params) : (await client.get('/api/jobs', { params })).data;
 export const searchJobs = async (params = {}) =>
@@ -88,40 +72,18 @@ export const getLatest = async (limit = 12) =>
 export const getJob = async (id) => (DEMO ? demo('getJob', id) : (await client.get(`/api/jobs/${id}`)).data);
 export const getStatistics = async () =>
   DEMO ? demo('getStatistics') : (await client.get('/api/statistics')).data;
-export const getRecommendations = async (params = {}) =>
-  DEMO
-    ? demo('getRecommendations', params)
-    : (await client.get('/api/recommendations', { params, headers: recommendationHeaders() })).data;
-export const getSimilarJobs = async (jobId, params = {}) =>
-  (await client.get(`/api/recommendations/similar/${jobId}`, { params })).data;
-export const savePreferences = async (preferences) =>
-  (await client.post('/api/preferences', preferences, { headers: recommendationHeaders() })).data;
-export const trackInteraction = async (jobId, interaction) =>
-  (
-    await client.post(
-      '/api/recommendations/interactions',
-      { job_id: Number(jobId), interaction },
-      { headers: recommendationHeaders() }
-    )
-  ).data;
 
-export const register = async (payload) => (await client.post('/api/auth/register', payload)).data;
-export const login = async (payload) => (await client.post('/api/auth/login', payload)).data;
+/* Editor sign-in. */
+export const login = async (payload) =>
+  DEMO ? demo('login') : (await client.post('/api/auth/login', payload)).data;
 export const refreshSession = async () =>
   DEMO ? demo('refreshSession') : (await client.post('/api/auth/refresh')).data;
-export const logout = async () => (await client.post('/api/auth/logout')).data;
+export const logout = async () => (DEMO ? demo('logout') : (await client.post('/api/auth/logout')).data);
 export const forgotPassword = async (email) =>
   (await client.post('/api/auth/forgot-password', { email })).data;
 export const resetPassword = async (access_token, password) =>
   (await client.post('/api/auth/reset-password', { access_token, password })).data;
 export const getProfile = async () => (DEMO ? demo('getProfile') : (await client.get('/api/profile')).data);
-export const updateProfile = async (profile) => (await client.put('/api/profile', profile)).data;
-export const recordJobActivity = async (jobId, activity) =>
-  (await client.post(`/api/user/jobs/${jobId}/${activity}`)).data;
-export const removeSavedJob = async (jobId) =>
-  (await client.delete(`/api/user/jobs/${jobId}/saved`)).data;
-export const getUserJobs = async (kind, params = {}) =>
-  (await client.get(`/api/user/jobs/${kind}`, { params })).data;
 
 /* Admin review (requires an account with the `admin` role). */
 export const getAdminSummary = async () =>

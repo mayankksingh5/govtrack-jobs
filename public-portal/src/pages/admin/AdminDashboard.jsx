@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Link, useSearchParams } from 'react-router-dom';
 import { getAdminPosts, getAdminSummary } from '../../api.js';
+import { useAuth } from '../../auth/AuthContext.jsx';
 import Breadcrumbs from '../../components/Breadcrumbs.jsx';
 import Icon from '../../components/Icon.jsx';
 import Pagination from '../../components/Pagination.jsx';
@@ -40,6 +41,7 @@ function CrawlerHealth({ sources }) {
 }
 
 export default function AdminDashboard() {
+  const { logout } = useAuth();
   const [params, setParams] = useSearchParams();
   const status = TABS.some(([key]) => key === params.get('status')) ? params.get('status') : 'pending';
   const page = Number(params.get('page')) || 1;
@@ -73,6 +75,7 @@ export default function AdminDashboard() {
             <h1>Admin dashboard</h1>
             <p>Scraped updates wait here until an editor completes the details and publishes them.</p>
           </div>
+          <button className="button secondary" onClick={logout}>Logout</button>
         </div>
         <section className="key-facts">
           <div><span>PENDING REVIEW</span><strong>{counts.pending ?? '—'}</strong><small>Auto-detected by crawlers</small></div>

@@ -1,7 +1,4 @@
-import { useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { recordJobActivity } from '../api.js';
-import { useAuth } from '../auth/AuthContext.jsx';
+import { Link } from 'react-router-dom';
 import { orgMarkFor } from '../lib/jobs.js';
 import { POPULAR_SECTORS, SECTORS } from '../lib/sectors.js';
 import Icon from './Icon.jsx';
@@ -92,32 +89,5 @@ export function SectionHeading({ eyebrow, title, count, viewTo }) {
         </Link>
       )}
     </div>
-  );
-}
-
-/* Bookmark / Save control. Saving needs an account, so guests go to login. */
-export function useSaveJob(jobId) {
-  const { user } = useAuth();
-  const navigate = useNavigate();
-  const location = useLocation();
-  const [saved, setSaved] = useState(false);
-  const save = async () => {
-    if (!user) return navigate('/login', { state: { from: location.pathname } });
-    try {
-      await recordJobActivity(jobId, 'saved');
-      setSaved(true);
-    } catch {
-      setSaved(false);
-    }
-  };
-  return { saved, save };
-}
-
-export function BookmarkButton({ jobId }) {
-  const { saved, save } = useSaveJob(jobId);
-  return (
-    <button className={`bookmark ${saved ? 'saved' : ''}`} aria-label={saved ? 'Job saved' : 'Save job'} onClick={save}>
-      <Icon name="bookmark" size={18} />
-    </button>
   );
 }
