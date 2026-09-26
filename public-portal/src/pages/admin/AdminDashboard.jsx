@@ -91,7 +91,12 @@ export default function AdminDashboard() {
             <h1>Admin dashboard</h1>
             <p>Scraped updates wait here until an editor completes the details and publishes them.</p>
           </div>
-          <button className="button secondary" onClick={logout}>Logout</button>
+          <div className="admin-header-actions">
+            <Link className="button primary" to="/admin/questions">
+              Questions{summary.data?.data?.[0]?.pending_questions ? ` (${summary.data.data[0].pending_questions})` : ''}
+            </Link>
+            <button className="button secondary" onClick={logout}>Logout</button>
+          </div>
         </div>
         <section className="key-facts">
           <div><span>PENDING REVIEW</span><strong>{counts.pending ?? '—'}</strong><small>Auto-detected by crawlers</small></div>

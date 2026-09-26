@@ -24,6 +24,7 @@ import { createClient } from '@supabase/supabase-js';
 import { dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { isPdfUrl, parsePdfNotification } from './pdf-parser.js';
+import { autoFields, isStale } from './auto-publish.js';
 
 // ---------------------------------------------------------------- config
 
@@ -182,6 +183,10 @@ function harvestLinks(html, baseUrl, source) {
 
 function cleanTitle(t) {
   return t
+    .split(/\s+Read More\s+/i)[0] // ISRO repeats the whole title after "Read More"
+    .replace(/^download\s+/i, '') // DSSSB: "Download VACANCY NOTICE ..."
+    .replace(/\s*-?\s*\[(pdf|docx?|xlsx?)\s*,[^\]]*\]\s*$/i, '') // BEL: "- [pdf, 1.21 MB]"
+    .replace(/\bnew icon\b/gi, '')
     .replace(/\s*\|\s*/g, ' | ')
     .replace(/\s*(new|latest|click here|download|view|पीडीएफ)\s*$/i, '')
     .replace(/\s+/g, ' ')
@@ -372,7 +377,8 @@ ${diagnosis.recommendation}`);
 
   if (db && runLog.length) await db.from('scrape_runs').insert(runLog);
 
-  console.log(`\n--- ${totalNew} naye item pending me gaye ---`);
+  const publishedNow = freshItems.filter((item) => item.status === 'published').length;
+  console.log(`\n--- ${totalNew} naye item: ${publishedNow} seedha publish, ${totalNew - publishedNow} admin review ke liye pending ---`);
   if (freshItems.length) await notifyTelegram(freshItems);
 
   // Agar SAB source fail ho gaye to exit code 1 -> GitHub Actions
@@ -506,25 +512,10 @@ function makeDb() {
 }
 
 /*
-  Finds whose title and URL mention only past years (e.g. 2024 result lists,
-  Jan-2025 verification lists) are stored as `rejected`: they never reach the
-  review queue, but stay in the table so the duplicate check keeps them out.
-  Query strings are ignored because they carry numeric IDs and timestamps.
-  In January the previous year still counts as current.
+  New finds are stored with the status auto-publish.js decides: old ones as
+  `rejected` (kept so the duplicate check blocks them), generic titles as
+  `pending` for an admin, everything else `published` with its official link.
 */
-function isStale(item, now = new Date()) {
-  let path = item.url;
-  try {
-    path = decodeURIComponent(new URL(item.url).pathname);
-  } catch {}
-  const current = now.getFullYear();
-  const years = (`${item.raw_title} ${path}`.match(/20\d{2}/g) || [])
-    .map(Number)
-    .filter((year) => year >= 2010 && year <= current + 1);
-  if (!years.length) return false;
-  return Math.max(...years) < (now.getMonth() === 0 ? current - 1 : current);
-}
-
 async function insertNew(db, items) {
   const inserted = [];
   const duplicates = [];
@@ -540,15 +531,15 @@ async function insertNew(db, items) {
       continue;
     }
 
-    const stale = isStale(item);
+    const fields = autoFields(item);
     const { data, error } = await db
       .from('posts')
-      .upsert({ ...item, status: stale ? 'rejected' : 'pending' }, { onConflict: 'fingerprint', ignoreDuplicates: true })
-      .select('id, raw_title, url, type, source_name');
+      .upsert({ ...item, ...fields }, { onConflict: 'fingerprint', ignoreDuplicates: true })
+      .select('id, raw_title, url, type, source_name, status');
     if (error) throw new Error(`DB: ${error.message}`);
 
     if (data?.length) {
-      if (stale) {
+      if (fields.status === 'rejected') {
         autoRejected.push(...data);
         continue;
       }

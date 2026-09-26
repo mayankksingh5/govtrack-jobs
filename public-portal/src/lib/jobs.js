@@ -2,6 +2,7 @@ import { findLink } from '../utils.js';
 
 const DAY_MS = 86_400_000;
 const CLOSING_SOON_DAYS = 7;
+const UNDATED_OPEN_DAYS = 45;
 
 /* API dates are plain `YYYY-MM-DD`; parse them as local calendar days. */
 export function parseDate(value) {
@@ -57,7 +58,11 @@ export function statusOf(job = {}) {
     if (toEnd < 0) return toExam != null && toExam >= 0 ? 'Exam' : 'Closed';
     return toEnd <= CLOSING_SOON_DAYS ? 'Closing Soon' : 'Active';
   }
-  return 'Active';
+  if (toExam != null && toExam >= 0) return 'Exam';
+  // Auto-published notices often have no dates yet. Most application windows
+  // run about a month, so an undated notice stops counting as open after that.
+  const age = daysUntil(job.published_at);
+  return age != null && age < -UNDATED_OPEN_DAYS ? 'Closed' : 'Active';
 }
 
 export const isOpen = (job) => ['Active', 'Closing Soon'].includes(statusOf(job));

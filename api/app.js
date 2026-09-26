@@ -11,6 +11,7 @@ import recommendationRoutes, { savePreferences } from './recommendation-routes.j
 import authRoutes from './auth-routes.js';
 import userRoutes from './user-routes.js';
 import adminRoutes from './admin-routes.js';
+import questionRoutes from './question-routes.js';
 
 const corsOptions = {
   origin(origin, callback) {
@@ -77,6 +78,7 @@ export function configureApp(app) {
   app.post('/api/preferences', asyncRoute(savePreferences));
   app.use('/api/auth', authRoutes);
   app.use('/api/admin', adminRoutes);
+  app.use('/api', questionRoutes);
   app.use('/api', userRoutes);
   app.use('/api/recommendations', recommendationRoutes);
   app.use('/api', routes);

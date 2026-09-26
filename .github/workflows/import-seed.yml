@@ -1,0 +1,36 @@
+name: import-seed
+
+# Publishes the hand-checked jobs in seed/ and tidies the review queue.
+# Runs once when seed/ or the publishing rules change on main (one short run,
+# not a schedule), or manually from the Actions tab.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'seed/**'
+      - 'scripts/import-seed.mjs'
+      - 'auto-publish.js'
+  workflow_dispatch:
+
+concurrency:
+  group: import-seed
+  cancel-in-progress: false
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - run: npm ci
+
+      - run: node scripts/import-seed.mjs
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}

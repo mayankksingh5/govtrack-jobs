@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { getJob, SITE_URL } from '../api.js';
 import Breadcrumbs from '../components/Breadcrumbs.jsx';
 import Icon from '../components/Icon.jsx';
+import JobQuestions from '../components/JobQuestions.jsx';
 import SEO from '../components/SEO.jsx';
 import { ErrorState, PageSkeleton } from '../components/States.jsx';
 import { Badge, OrgMark, SectionHeading, SectorBadge } from '../components/UI.jsx';
@@ -272,6 +273,7 @@ export default function JobDetails() {
                 </div>
               </div>
             </section>
+            <JobQuestions jobId={job.id} />
           </div>
           <aside className="sidebar detail-side">
             <div className="side-card apply-card">
