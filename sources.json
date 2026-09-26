@@ -1,5 +1,23 @@
 [
   {
+    "id": "dsssb-vacancies",
+    "name": "DSSSB",
+    "url": "https://dsssb.delhi.gov.in/dsssb-vacancies",
+    "enabled": true,
+    "insecureTLS": true,
+    "exclude": "^(Current Vacancies|Latest Result|Old Vacancies|Recruitments|Apply Online|Current page|Page [0-9]|Last page|First page|Next page|Previous page)|User Guide|[Cc]ancell?ation|CANCELL?ATION|[Rr]ejection|REJECTION|GeM|[Bb]id |[Tt]ender|[Tt]axi|[Hh]iring [Ss]ervices|[Ee]ntry of candidates|Recruitment Rules|^Vacancy Advertised|OARS",
+    "_note": "Delhi Subordinate Services Selection Board: current vacancy advertisements."
+  },
+  {
+    "id": "dsssb-notices",
+    "name": "DSSSB",
+    "url": "https://dsssb.delhi.gov.in/",
+    "enabled": true,
+    "insecureTLS": true,
+    "exclude": "^(Current Vacancies|Latest Result|Old Vacancies|Recruitments|Apply Online|Current page|Page [0-9]|Last page|First page|Next page|Previous page)|User Guide|[Cc]ancell?ation|CANCELL?ATION|[Rr]ejection|REJECTION|GeM|[Bb]id |[Tt]ender|[Tt]axi|[Hh]iring [Ss]ervices|[Ee]ntry of candidates|Recruitment Rules|^Vacancy Advertised|OARS",
+    "_note": "DSSSB home page notices: exam dates, admit cards, answer keys, results."
+  },
+  {
     "id": "ssc",
     "name": "SSC",
     "url": "https://ssc.gov.in/",
@@ -20,7 +38,9 @@
     "name": "IBPS",
     "url": "https://www.ibps.in/",
     "enabled": true,
-    "insecureTLS": true
+    "insecureTLS": true,
+    "exclude": "^(RECRUITMENT EXAMS|Personnel Selection Services)|Promotion for the post",
+    "_note": "exclude: site menu links and internal staff-promotion drives (not open to the public)."
   },
   {
     "id": "rrb-apply",
@@ -134,7 +154,9 @@
     "name": "RBI",
     "url": "https://opportunities.rbi.org.in/Scripts/Vacancies.aspx",
     "enabled": true,
-    "insecureTLS": true
+    "insecureTLS": true,
+    "exclude": "^Extension of last date",
+    "_note": "exclude: last-date extension notices repeat an existing advertisement; update its last date in /admin instead."
   },
   {
     "id": "nta",
@@ -144,32 +166,24 @@
     "insecureTLS": false,
     "_note": "Wrong page: the homepage loads but yields no usable links. NoticeBoardArchive is reachable but predominantly exposes stale 2019-2021 links, so it is not a reliable current feed."
   },
-
   {
     "_comment": "----- EXAMPLE: advanced options (copy in kisi bhi source me) -----",
     "id": "example-advanced",
     "name": "Example",
     "url": "https://example.gov.in/notices",
     "enabled": false,
-
     "insecureTLS": true,
     "_insecureTLS": "Bahut si .gov.in / .nic.in sites ka SSL cert expired ya chain-incomplete hota hai. Ye true karne se wo error skip ho jayega.",
-
     "selector": "#noticeBoard a",
     "_selector": "Optional. Diya to sirf isi ke andar ke <a> harvest honge. Nahi diya to pure page ke links. Shuru me mat do -- pehle --discover chala ke dekho.",
-
     "include": "(?i)(recruit|vacan|admit|result|advt)",
     "_include": "Optional regex. Link text isse match karna hi chahiye.",
-
     "exclude": "(?i)(tender|archive|corrigendum|rti)",
     "_exclude": "Optional regex. Match hua to link drop.",
-
     "urlInclude": "\\.pdf$",
     "_urlInclude": "Optional regex URL pe.",
-
     "forceType": "job",
     "_forceType": "Classifier ko override karo: job | admit_card | result | answer_key",
-
     "requireYear": true,
     "_requireYear": "true = link text ya URL me current/previous year hona chahiye. Purani archive news filter karne ke liye."
   }

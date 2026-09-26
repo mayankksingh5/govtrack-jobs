@@ -66,6 +66,12 @@ const adminPosts = () => [
   ...records.map((job) => ({ status: 'published', first_seen_at: job.published_at, url: job.important_links[0]?.url, ...job })),
 ];
 
+const questions = [
+  { id: 1, job_id: 1, name: 'Ritika', message: 'Can final-year graduation students apply for IBPS PO?', answer: 'Yes, if you hold the degree by the cut-off date given in the notification. Check the eligibility section of the official notice.', status: 'approved', created_at: stamp(-2), answered_at: stamp(-1) },
+  { id: 2, job_id: 1, name: 'Aman', message: 'Is there any sectional cut-off in the prelims?', answer: null, status: 'approved', created_at: stamp(-1), answered_at: null },
+  { id: 3, job_id: 2, name: 'Suresh', message: 'Will the NTPC exam be held in Hindi as well?', answer: null, status: 'pending', created_at: stamp(0), answered_at: null },
+];
+
 const DEMO_ADMIN = { user_id: '00000000-0000-4000-8000-000000000001', name: 'Demo Admin', email: 'admin@example.com', role: 'admin' };
 
 export const demoApi = {
@@ -76,6 +82,7 @@ export const demoApi = {
   getAdminSummary: () =>
     page([{
       by_status: { pending: pending.filter((post) => post.status === 'pending').length, published: records.length, rejected: 0 },
+      pending_questions: questions.filter((q) => q.status === 'pending').length,
       sources: [
         { source_id: 'ibps', ok: true, links_found: 10, new_items: 1, ms: 2100, ran_at: stamp(0) },
         { source_id: 'sbi-careers', ok: true, links_found: 53, new_items: 1, ms: 3400, ran_at: stamp(0) },
@@ -118,4 +125,26 @@ export const demoApi = {
     return page([job], { limit: 1 });
   },
   getStatistics: () => page([{ published_jobs: records.length, by_category: {} }]),
+  getQuestions: (jobId) => ({
+    ...page(questions.filter((q) => String(q.job_id) === String(jobId) && q.status === 'approved'), { limit: 100 }),
+    meta: { enabled: true },
+  }),
+  askQuestion: (jobId, question) => {
+    questions.push({ id: questions.length + 1, job_id: Number(jobId), name: question.name, message: question.message, answer: null, status: 'pending', created_at: new Date().toISOString(), answered_at: null });
+    return page([{ status: 'pending' }]);
+  },
+  getAdminQuestions: (params = {}) => ({
+    ...page(
+      questions
+        .filter((q) => q.status === (params.status || 'pending'))
+        .map((q) => ({ ...q, job_title: records.find((job) => job.id === q.job_id)?.title })),
+      { limit: 100 }
+    ),
+    meta: { enabled: true },
+  }),
+  updateAdminQuestion: (id, changes) => {
+    const question = questions.find((q) => String(q.id) === String(id));
+    Object.assign(question, changes, { answered_at: changes.answer ? new Date().toISOString() : null });
+    return page([question]);
+  },
 };

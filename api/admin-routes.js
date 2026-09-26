@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { requireAuth, requireRole } from './auth-middleware.js';
 import { getRecommendationDb } from './db.js';
 import { ApiError, asyncRoute } from './middleware.js';
+import { isMissingTable } from './question-routes.js';
 
 /*
   Editorial review for scraped records. Every scraped post starts as
@@ -96,11 +97,15 @@ router.get(
     // Latest run per source, for the crawler health panel.
     const latest = new Map();
     for (const run of runs || []) if (!latest.has(run.source_id)) latest.set(run.source_id, run);
+    // null until the job_questions migration has been run.
+    const questions = await db.from('job_questions').select('id', { count: 'exact', head: true }).eq('status', 'pending');
+    if (questions.error && !isMissingTable(questions.error)) assertResult(questions);
     res.json({
       success: true,
       data: [{
         by_status: Object.fromEntries(STATUSES.map((status, index) => [status, counts[index].count || 0])),
         sources: [...latest.values()],
+        pending_questions: questions.error ? null : questions.count || 0,
       }],
     });
   })
@@ -141,6 +146,29 @@ router.get(
   asyncRoute(async (req, res) => {
     const result = assertResult(
       await getRecommendationDb().from('posts').select(FIELDS).eq('id', postId(req.params.id)).maybeSingle()
+    );
+    if (!result.data) throw new ApiError(404, 'POST_NOT_FOUND', 'Post not found');
+    res.json({ success: true, data: [result.data] });
+  })
+);
+
+/* Quick status change from the review list (reject / back to pending) without
+   touching the editorial fields. Publishing goes through PUT /posts/:id,
+   which checks the details first. */
+router.put(
+  '/posts/:id/status',
+  asyncRoute(async (req, res) => {
+    const status = req.body?.status;
+    if (!['pending', 'rejected'].includes(status)) {
+      throw new ApiError(400, 'INVALID_INPUT', 'status must be pending or rejected');
+    }
+    const result = assertResult(
+      await getRecommendationDb()
+        .from('posts')
+        .update({ status })
+        .eq('id', postId(req.params.id))
+        .select('id, status')
+        .maybeSingle()
     );
     if (!result.data) throw new ApiError(404, 'POST_NOT_FOUND', 'Post not found');
     res.json({ success: true, data: [result.data] });
@@ -189,6 +217,54 @@ router.put(
     }
 
     const result = assertResult(await db.from('posts').update(changes).eq('id', id).select(FIELDS).single());
+    res.json({ success: true, data: [result.data] });
+  })
+);
+
+/* Community Q&A moderation. */
+const QUESTION_STATUSES = ['pending', 'approved', 'rejected'];
+
+router.get(
+  '/questions',
+  asyncRoute(async (req, res) => {
+    const status = QUESTION_STATUSES.includes(req.query.status) ? req.query.status : 'pending';
+    const { data, error } = await getRecommendationDb()
+      .from('job_questions')
+      .select('id, job_id, name, message, answer, status, created_at, answered_at, posts(title, raw_title)')
+      .eq('status', status)
+      .order('created_at', { ascending: status === 'pending' })
+      .limit(100);
+    if (isMissingTable(error)) {
+      return res.json({ success: true, total: 0, data: [], meta: { enabled: false } });
+    }
+    assertResult({ error });
+    res.json({
+      success: true,
+      total: data.length,
+      data: data.map(({ posts, ...question }) => ({ ...question, job_title: posts?.title || posts?.raw_title || null })),
+      meta: { enabled: true },
+    });
+  })
+);
+
+router.put(
+  '/questions/:id',
+  asyncRoute(async (req, res) => {
+    const id = postId(req.params.id);
+    const status = req.body?.status;
+    if (!QUESTION_STATUSES.includes(status)) {
+      throw new ApiError(400, 'INVALID_INPUT', `status must be one of: ${QUESTION_STATUSES.join(', ')}`);
+    }
+    const answer = text(req.body?.answer, 'Answer', 2000);
+    const result = assertResult(
+      await getRecommendationDb()
+        .from('job_questions')
+        .update({ status, answer, answered_at: answer ? new Date().toISOString() : null })
+        .eq('id', id)
+        .select('id, status, answer, answered_at')
+        .maybeSingle()
+    );
+    if (!result.data) throw new ApiError(404, 'QUESTION_NOT_FOUND', 'Question not found');
     res.json({ success: true, data: [result.data] });
   })
 );

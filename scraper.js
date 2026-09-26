@@ -24,6 +24,7 @@ import { createClient } from '@supabase/supabase-js';
 import { dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { isPdfUrl, parsePdfNotification } from './pdf-parser.js';
+import { autoFields, isStale } from './auto-publish.js';
 
 // ---------------------------------------------------------------- config
 
@@ -182,6 +183,10 @@ function harvestLinks(html, baseUrl, source) {
 
 function cleanTitle(t) {
   return t
+    .split(/\s+Read More\s+/i)[0] // ISRO repeats the whole title after "Read More"
+    .replace(/^download\s+/i, '') // DSSSB: "Download VACANCY NOTICE ..."
+    .replace(/\s*-?\s*\[(pdf|docx?|xlsx?)\s*,[^\]]*\]\s*$/i, '') // BEL: "- [pdf, 1.21 MB]"
+    .replace(/\bnew icon\b/gi, '')
     .replace(/\s*\|\s*/g, ' | ')
     .replace(/\s*(new|latest|click here|download|view|पीडीएफ)\s*$/i, '')
     .replace(/\s+/g, ' ')
@@ -311,10 +316,12 @@ ${diagnosis.recommendation}`);
 
       let inserted = [];
       let duplicates = [];
+      let autoRejected = [];
       if (db && items.length) {
         const result = await insertNew(db, items);
         inserted = result.inserted;
         duplicates = result.duplicates;
+        autoRejected = result.autoRejected;
         // Parsed PDF data is only written to logs/, so scheduled CI runs skip
         // it (SCRAPER_PARSE_PDFS=false) to save Actions minutes.
         if (PARSE_PDFS) {
@@ -331,7 +338,7 @@ ${diagnosis.recommendation}`);
 
       console.log(
         `ok   ${source.id.padEnd(20)} found=${String(items.length).padStart(3)} ` +
-          `new=${inserted.length} duplicates=${duplicates.length}`
+          `new=${inserted.length} duplicates=${duplicates.length} old_auto_rejected=${autoRejected.length}`
       );
       runLog.push({
         source_id: source.id,
@@ -370,7 +377,8 @@ ${diagnosis.recommendation}`);
 
   if (db && runLog.length) await db.from('scrape_runs').insert(runLog);
 
-  console.log(`\n--- ${totalNew} naye item pending me gaye ---`);
+  const publishedNow = freshItems.filter((item) => item.status === 'published').length;
+  console.log(`\n--- ${totalNew} naye item: ${publishedNow} seedha publish, ${totalNew - publishedNow} admin review ke liye pending ---`);
   if (freshItems.length) await notifyTelegram(freshItems);
 
   // Agar SAB source fail ho gaye to exit code 1 -> GitHub Actions
@@ -503,9 +511,15 @@ function makeDb() {
   return createClient(url, key, { auth: { persistSession: false } });
 }
 
+/*
+  New finds are stored with the status auto-publish.js decides: old ones as
+  `rejected` (kept so the duplicate check blocks them), generic titles as
+  `pending` for an admin, everything else `published` with its official link.
+*/
 async function insertNew(db, items) {
   const inserted = [];
   const duplicates = [];
+  const autoRejected = [];
   const pdfCandidates = [];
 
   for (const item of items) {
@@ -517,13 +531,18 @@ async function insertNew(db, items) {
       continue;
     }
 
+    const fields = autoFields(item);
     const { data, error } = await db
       .from('posts')
-      .upsert(item, { onConflict: 'fingerprint', ignoreDuplicates: true })
-      .select('id, raw_title, url, type, source_name');
+      .upsert({ ...item, ...fields }, { onConflict: 'fingerprint', ignoreDuplicates: true })
+      .select('id, raw_title, url, type, source_name, status');
     if (error) throw new Error(`DB: ${error.message}`);
 
     if (data?.length) {
+      if (fields.status === 'rejected') {
+        autoRejected.push(...data);
+        continue;
+      }
       inserted.push(...data);
       if (isPdfUrl(item.url)) pdfCandidates.push({ jobId: data[0].id, item });
       continue;
@@ -545,7 +564,7 @@ async function insertNew(db, items) {
     }
   }
 
-  return { inserted, duplicates, pdfCandidates };
+  return { inserted, duplicates, autoRejected, pdfCandidates };
 }
 
 async function processPdfCandidates(candidates, source) {
@@ -731,4 +750,4 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   });
 }
 
-export { harvestLinks, classify, fp, normalizeText, titleSimilarity };
+export { harvestLinks, classify, fp, isStale, normalizeText, titleSimilarity };

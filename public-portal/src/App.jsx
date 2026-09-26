@@ -16,6 +16,7 @@ const StaticPage = lazy(() => import('./pages/StaticPage.jsx'));
 const NotFound = lazy(() => import('./pages/NotFound.jsx'));
 const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard.jsx'));
 const AdminReview = lazy(() => import('./pages/admin/AdminReview.jsx'));
+const AdminQuestions = lazy(() => import('./pages/admin/AdminQuestions.jsx'));
 const LoginPage = lazy(() => import('./pages/AuthPages.jsx').then((module) => ({ default: module.LoginPage })));
 const ForgotPasswordPage = lazy(() => import('./pages/AuthPages.jsx').then((module) => ({ default: module.ForgotPasswordPage })));
 const ResetPasswordPage = lazy(() => import('./pages/AuthPages.jsx').then((module) => ({ default: module.ResetPasswordPage })));
@@ -44,6 +45,7 @@ export default function App() {
           <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
           <Route path="/admin/posts/:id" element={<AdminRoute><AdminReview /></AdminRoute>} />
+          <Route path="/admin/questions" element={<AdminRoute><AdminQuestions /></AdminRoute>} />
           <Route path="/about" element={<StaticPage type="about" />} />
           <Route path="/contact" element={<StaticPage type="contact" />} />
           <Route path="/privacy" element={<StaticPage type="privacy" />} />

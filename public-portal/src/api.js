@@ -73,6 +73,12 @@ export const getJob = async (id) => (DEMO ? demo('getJob', id) : (await client.g
 export const getStatistics = async () =>
   DEMO ? demo('getStatistics') : (await client.get('/api/statistics')).data;
 
+/* Community Q&A on job pages — public, no account. */
+export const getQuestions = async (jobId) =>
+  DEMO ? demo('getQuestions', jobId) : (await client.get(`/api/jobs/${jobId}/questions`)).data;
+export const askQuestion = async (jobId, question) =>
+  DEMO ? demo('askQuestion', jobId, question) : (await client.post(`/api/jobs/${jobId}/questions`, question)).data;
+
 /* Editor sign-in. */
 export const login = async (payload) =>
   DEMO ? demo('login') : (await client.post('/api/auth/login', payload)).data;
@@ -94,3 +100,11 @@ export const getAdminPost = async (id) =>
   DEMO ? demo('getAdminPost', id) : (await client.get(`/api/admin/posts/${id}`)).data;
 export const updateAdminPost = async (id, changes) =>
   DEMO ? demo('updateAdminPost', id, changes) : (await client.put(`/api/admin/posts/${id}`, changes)).data;
+export const getAdminQuestions = async (params = {}) =>
+  DEMO ? demo('getAdminQuestions', params) : (await client.get('/api/admin/questions', { params })).data;
+export const updateAdminQuestion = async (id, changes) =>
+  DEMO ? demo('updateAdminQuestion', id, changes) : (await client.put(`/api/admin/questions/${id}`, changes)).data;
+export const setAdminPostStatus = async (id, status) =>
+  DEMO
+    ? demo('updateAdminPost', id, { status })
+    : (await client.put(`/api/admin/posts/${id}/status`, { status })).data;
