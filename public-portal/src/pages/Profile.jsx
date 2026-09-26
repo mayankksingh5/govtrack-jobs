@@ -49,6 +49,7 @@ export default function Profile() {
           <Link className="text-link" to="/applied-jobs">Applied jobs</Link> ·{' '}
           <Link className="text-link" to="/recently-viewed">Recently viewed</Link> ·{' '}
           <Link className="text-link" to="/for-you">For you</Link>
+          {user.role === 'admin' && <> · <Link className="text-link" to="/admin">Admin dashboard</Link></>}
         </p>
         <form onSubmit={submit} className="form-grid two">
           <label className="field"><span>Name</span><input required value={form.name} onChange={set('name')} /></label>

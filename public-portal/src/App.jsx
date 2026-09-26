@@ -3,6 +3,7 @@ import { Route, Routes } from 'react-router-dom';
 import Layout from './components/Layout.jsx';
 import { PageSkeleton } from './components/States.jsx';
 import ProtectedRoute from './auth/ProtectedRoute.jsx';
+import AdminRoute from './auth/AdminRoute.jsx';
 
 const Home = lazy(() => import('./pages/Home.jsx'));
 const Jobs = lazy(() => import('./pages/Jobs.jsx'));
@@ -17,6 +18,8 @@ const NotFound = lazy(() => import('./pages/NotFound.jsx'));
 const Recommendations = lazy(() => import('./pages/Recommendations.jsx'));
 const Profile = lazy(() => import('./pages/Profile.jsx'));
 const UserJobs = lazy(() => import('./pages/UserJobs.jsx'));
+const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard.jsx'));
+const AdminReview = lazy(() => import('./pages/admin/AdminReview.jsx'));
 const LoginPage = lazy(() => import('./pages/AuthPages.jsx').then((module) => ({ default: module.LoginPage })));
 const RegisterPage = lazy(() => import('./pages/AuthPages.jsx').then((module) => ({ default: module.RegisterPage })));
 const ForgotPasswordPage = lazy(() => import('./pages/AuthPages.jsx').then((module) => ({ default: module.ForgotPasswordPage })));
@@ -49,6 +52,8 @@ export default function App() {
           <Route path="/saved-jobs" element={<ProtectedRoute><UserJobs kind="saved" /></ProtectedRoute>} />
           <Route path="/recently-viewed" element={<ProtectedRoute><UserJobs kind="recent" /></ProtectedRoute>} />
           <Route path="/applied-jobs" element={<ProtectedRoute><UserJobs kind="applied" /></ProtectedRoute>} />
+          <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
+          <Route path="/admin/posts/:id" element={<AdminRoute><AdminReview /></AdminRoute>} />
           <Route path="/about" element={<StaticPage type="about" />} />
           <Route path="/contact" element={<StaticPage type="contact" />} />
           <Route path="/privacy" element={<StaticPage type="privacy" />} />

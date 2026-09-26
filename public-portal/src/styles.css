@@ -692,6 +692,25 @@ footer .container > div:last-child > span { color: #9fb2ac; font-size: 9px; }
 .verification-banner a { color: var(--brand); font-size: 9px; font-weight: 700; display: flex; gap: 5px; align-items: center; }
 .timeline-item > a { color: var(--muted); padding: 2px; }
 .timeline-item > a:hover { color: var(--sector, var(--brand)); }
+.admin-toolbar { justify-content: space-between; }
+.admin-toolbar .header-search { flex: 0 1 320px; background: var(--paper); }
+.badge-failing, .badge-rejected { color: var(--red); background: var(--red-soft); }
+.badge-pending { color: #a84d08; background: #fff3e8; }
+.badge-published, .badge-healthy { color: #087a5b; background: #e8f5f0; }
+.field textarea { border: 1px solid var(--line); border-radius: 8px; padding: 9px 11px; font: inherit; font-size: 12px; resize: vertical; outline: 0; }
+.field textarea:focus { border-color: var(--brand); }
+.checkbox-field { flex-direction: row; align-items: center; align-self: end; height: 40px; gap: 8px; }
+.checkbox-field input { accent-color: var(--brand); width: 16px; height: 16px; }
+.checkbox-field span { font-size: 11px; text-transform: none; letter-spacing: 0; color: var(--ink); }
+.link-row { display: grid; grid-template-columns: 1fr 2fr auto; gap: 8px; }
+.link-row input { height: 38px; border: 1px solid var(--line); border-radius: 8px; padding: 0 10px; font-size: 11px; outline: 0; }
+.link-row input:focus { border-color: var(--brand); }
+.add-link { align-self: flex-start; }
+.preview-badges { justify-content: center; }
+.admin-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+.admin-actions .button { width: 100%; height: 37px; }
+.button.secondary.danger { color: var(--red); }
+.button.secondary.danger:hover { border-color: var(--red); background: var(--red-soft); }
 .bottom-nav a { color: var(--muted); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-size: 8px; }
 .bottom-nav a.active { color: var(--brand); font-weight: 700; }
 
@@ -706,4 +725,6 @@ footer .container > div:last-child > span { color: #9fb2ac; font-size: 9px; }
   .form-grid.two { grid-template-columns: 1fr; }
   .form-card, .prose-card { padding: 18px; }
   .info-list > div { grid-template-columns: 1fr; gap: 3px; }
+  .link-row { grid-template-columns: 1fr; }
+  .admin-toolbar .header-search { display: flex; width: 100%; flex-basis: auto; }
 }
