@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { Router } from 'express';
 import { requireAuth, requireRole } from './auth-middleware.js';
 import { getRecommendationDb } from './db.js';
@@ -175,6 +176,74 @@ router.put(
   })
 );
 
+/* Validated editorial fields from the review / add-job form. */
+function editorialFields(body = {}) {
+  const status = body.status ?? 'pending';
+  if (!STATUSES.includes(status)) throw new ApiError(400, 'INVALID_INPUT', `status must be one of: ${STATUSES.join(', ')}`);
+  const type = body.type ?? 'job';
+  if (!TYPES.includes(type)) throw new ApiError(400, 'INVALID_INPUT', `type must be one of: ${TYPES.join(', ')}`);
+  return {
+    status,
+    type,
+    title: text(body.title, 'Title', 200),
+    organization: text(body.organization, 'Organization', 120),
+    post_name: text(body.post_name, 'Post name', 200),
+    short_info: text(body.short_info, 'Short info', 500),
+    apply_start: date(body.apply_start, 'Application start'),
+    last_date: date(body.last_date, 'Last date'),
+    exam_date: date(body.exam_date, 'Exam date'),
+    total_vacancy: count(body.total_vacancy, 'Total vacancy'),
+    age_limit: text(body.age_limit, 'Age limit', 120),
+    qualification: text(body.qualification, 'Qualification', 300),
+    fee_info: text(body.fee_info, 'Fee', 500),
+    important_links: links(body.important_links),
+    is_featured: body.is_featured === true,
+  };
+}
+
+/* A job the admin adds by hand (not found by the scraper). */
+router.post(
+  '/posts',
+  asyncRoute(async (req, res) => {
+    const fields = editorialFields(req.body);
+    if (!fields.title) throw new ApiError(400, 'TITLE_REQUIRED', 'Add a title');
+    if (!fields.important_links.length) {
+      throw new ApiError(400, 'OFFICIAL_LINK_REQUIRED', 'Add at least one official link');
+    }
+    const url = fields.important_links[0].url;
+    const db = getRecommendationDb();
+    const existing = assertResult(await db.from('posts').select('id').eq('url', url).limit(1)).data;
+    if (existing?.length) {
+      throw new ApiError(409, 'POST_EXISTS', `A post with this official link already exists (#${existing[0].id})`);
+    }
+    const now = new Date().toISOString();
+    const created = assertResult(
+      await db
+        .from('posts')
+        .insert({
+          ...fields,
+          fingerprint: createHash('sha1').update(`manual::${url.toLowerCase()}`).digest('hex'),
+          source_id: 'manual',
+          source_name: fields.organization || 'GovTrack',
+          raw_title: fields.title,
+          url,
+          published_at: fields.status === 'published' ? now : null,
+        })
+        .select('id')
+        .single()
+    ).data;
+    const result = assertResult(
+      await db
+        .from('posts')
+        .update({ slug: `${slugify(fields.title)}-${created.id}` })
+        .eq('id', created.id)
+        .select(FIELDS)
+        .single()
+    );
+    res.status(201).json({ success: true, data: [result.data] });
+  })
+);
+
 router.put(
   '/posts/:id',
   asyncRoute(async (req, res) => {
@@ -183,31 +252,8 @@ router.put(
     const current = assertResult(await db.from('posts').select('id, raw_title, slug, published_at').eq('id', id).maybeSingle()).data;
     if (!current) throw new ApiError(404, 'POST_NOT_FOUND', 'Post not found');
 
-    const body = req.body || {};
-    const status = body.status ?? 'pending';
-    if (!STATUSES.includes(status)) throw new ApiError(400, 'INVALID_INPUT', `status must be one of: ${STATUSES.join(', ')}`);
-    const type = body.type ?? 'job';
-    if (!TYPES.includes(type)) throw new ApiError(400, 'INVALID_INPUT', `type must be one of: ${TYPES.join(', ')}`);
-
-    const changes = {
-      status,
-      type,
-      title: text(body.title, 'Title', 200),
-      organization: text(body.organization, 'Organization', 120),
-      post_name: text(body.post_name, 'Post name', 200),
-      short_info: text(body.short_info, 'Short info', 500),
-      apply_start: date(body.apply_start, 'Application start'),
-      last_date: date(body.last_date, 'Last date'),
-      exam_date: date(body.exam_date, 'Exam date'),
-      total_vacancy: count(body.total_vacancy, 'Total vacancy'),
-      age_limit: text(body.age_limit, 'Age limit', 120),
-      qualification: text(body.qualification, 'Qualification', 300),
-      fee_info: text(body.fee_info, 'Fee', 500),
-      important_links: links(body.important_links),
-      is_featured: body.is_featured === true,
-    };
-
-    if (status === 'published') {
+    const changes = editorialFields(req.body);
+    if (changes.status === 'published') {
       changes.title = changes.title || current.raw_title;
       if (!changes.important_links.length) {
         throw new ApiError(400, 'OFFICIAL_LINK_REQUIRED', 'Add at least one official link before publishing');

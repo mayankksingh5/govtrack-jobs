@@ -76,6 +76,8 @@ export const getStatistics = async () =>
 /* Community Q&A on job pages — public, no account. */
 export const getQuestions = async (jobId) =>
   DEMO ? demo('getQuestions', jobId) : (await client.get(`/api/jobs/${jobId}/questions`)).data;
+export const getLatestQuestions = async (limit = 30) =>
+  DEMO ? demo('getLatestQuestions', limit) : (await client.get('/api/questions/latest', { params: { limit } })).data;
 export const askQuestion = async (jobId, question) =>
   DEMO ? demo('askQuestion', jobId, question) : (await client.post(`/api/jobs/${jobId}/questions`, question)).data;
 
@@ -98,6 +100,8 @@ export const getAdminPosts = async (params = {}) =>
   DEMO ? demo('getAdminPosts', params) : (await client.get('/api/admin/posts', { params })).data;
 export const getAdminPost = async (id) =>
   DEMO ? demo('getAdminPost', id) : (await client.get(`/api/admin/posts/${id}`)).data;
+export const createAdminPost = async (post) =>
+  DEMO ? demo('createAdminPost', post) : (await client.post('/api/admin/posts', post)).data;
 export const updateAdminPost = async (id, changes) =>
   DEMO ? demo('updateAdminPost', id, changes) : (await client.put(`/api/admin/posts/${id}`, changes)).data;
 export const getAdminQuestions = async (params = {}) =>
