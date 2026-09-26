@@ -1,233 +1,113 @@
-# Government Job Portal
+# GovTrack Jobs — Government Jobs & Exams Portal
 
-A production-oriented platform for collecting official Indian government job
-notifications and presenting them through a public portal, an administration
-dashboard, and a REST API.
+A full-stack platform that tracks Indian government recruitments — jobs, admit cards, results, answer keys and exam dates — and publishes them with links to the official source. A scraper checks official recruitment sites every two hours and publishes new notices automatically, while an admin panel handles corrections, hand-written posts, visitor questions and a blog.
 
-The project includes generic link harvesting, source health diagnostics,
-duplicate detection, PDF metadata extraction, authentication, saved and applied
-jobs, rule-based recommendations, deployment manifests, and automated tests.
+**Live site:** https://jobportal-phi-topaz.vercel.app
 
-## Architecture
+![Home page](docs/screenshots/home.png)
 
-| Component | Technology | Directory |
-|---|---|---|
-| Scraper and diagnostics | Node.js, Cheerio | repository root |
-| REST API | Express, Supabase | `api/` |
-| Public portal | React, Vite, Tailwind CSS | `public-portal/` |
-| Admin panel | React, Vite, Tailwind CSS, Chart.js | `admin-panel/` |
-| Source health dashboard | HTML, CSS, JavaScript | `dashboard/` |
-| Automated tests | Vitest, Testing Library, Supertest, Playwright | `tests/` and frontend source trees |
+## Highlights
 
-Supabase provides the PostgreSQL database and authentication service. The API
-is prepared for Render, while both Vite applications are prepared for Vercel.
+- **Automatic publishing** — a Node.js scraper (GitHub Actions, every 2 hours) reads official sites such as IBPS, SBI, RBI, ISRO, BEL and DSSSB, removes duplicates, rejects old notices and publishes new ones with their official links.
+- **Sector-coded design** — 13 sectors (Banking, SSC, Railway, Defence, Teaching…) each have their own colour, carried through cards, badges, category pages and the "View details" button, independent of recruitment status colours.
+- **Status from dates** — Upcoming, Active, Closing Soon, Closed and Exam are calculated from application and exam dates instead of being set by hand.
+- **SEO built in** — Vercel functions server-render job and blog pages with titles, descriptions, Open Graph tags and JSON-LD (`JobPosting`, `BlogPosting`, `BreadcrumbList`), a live sitemap lists every page, and URLs carry the job title.
+- **Community Q&A** — visitors ask questions on any job without an account; questions appear after moderation, optionally with an answer.
+- **Admin panel** — review queue with one-click reject, add jobs by hand, moderate questions, and a Markdown blog editor with a live Google-result preview.
 
-## Requirements
+## Screenshots
 
-- Node.js 20 or newer
-- npm 10 or newer
-- A Supabase project
-- Git
+| Job detail | Sector page |
+|---|---|
+| ![Job detail with timeline and countdown](docs/screenshots/job-detail.png) | ![Railway category page](docs/screenshots/category.png) |
 
-## Local setup
+| Exam calendar | Explore by sector |
+|---|---|
+| ![Exam calendar](docs/screenshots/exam-calendar.png) | ![Sector cards and job list](docs/screenshots/home-sectors.png) |
 
-Install each independent Node project:
+| Blog article | Community Q&A |
+|---|---|
+| ![Blog article](docs/screenshots/blog-article.png) | ![Community questions](docs/screenshots/community.png) |
+
+| Admin: review queue | Admin: blog editor with SEO preview |
+|---|---|
+| ![Admin dashboard](docs/screenshots/admin-dashboard.png) | ![Blog editor](docs/screenshots/admin-blog-editor.png) |
+
+<p>
+  <img src="docs/screenshots/mobile-home.png" alt="Mobile home" width="260" />
+  &nbsp;
+  <img src="docs/screenshots/mobile-job.png" alt="Mobile job detail" width="260" />
+</p>
+
+## How it works
+
+```mermaid
+flowchart LR
+  subgraph Sources["Official sites"]
+    S1[IBPS / SBI / RBI]
+    S2[ISRO / BEL / DSSSB]
+  end
+  Sources -->|every 2 h| Scraper["Scraper<br/>(GitHub Actions)"]
+  Scraper -->|dedupe + auto-publish rules| DB[(Supabase<br/>PostgreSQL)]
+  Seed["seed/*.json<br/>hand-checked jobs"] -->|import-seed workflow| DB
+  DB --> API["Express API<br/>(Vercel)"]
+  API --> Web["React site<br/>(Vercel)"]
+  API --> Admin["Admin panel<br/>/admin"]
+  Web --> SEO["SEO functions<br/>meta + sitemap"]
+```
+
+1. **Collect** — `scraper.js` fetches each source in `sources.json`, extracts links and classifies them (job, admit card, result, answer key).
+2. **Filter** — `auto-publish.js` rejects notices that mention only past years or have old upload dates, keeps vague titles ("Click here…") for review, and publishes the rest; duplicates are matched by URL and title similarity.
+3. **Curate** — recruitments researched by hand go into `seed/jobs.json`; corrections go into `seed/overrides.json`. Merging to `main` runs the `import-seed` workflow, so no SQL is needed.
+4. **Serve** — the Express API reads published posts; the React app renders them, and Vercel functions add page-specific SEO for crawlers and link previews.
+
+## Tech stack
+
+| Layer | Technology |
+|---|---|
+| Frontend | React 18, Vite, Tailwind CSS v4, React Router, react-helmet-async |
+| Backend | Node.js, Express 5, Helmet, express-rate-limit |
+| Database & auth | Supabase (PostgreSQL, Row Level Security, Auth) |
+| Scraping | Node.js, Cheerio, undici, PDF text extraction |
+| Automation | GitHub Actions (scheduled scraper, seed import) |
+| Hosting & SEO | Vercel (static site, serverless API, SEO/sitemap functions) |
+| Content | Markdown blog with marked + DOMPurify |
+| Design | Figma (GovTrack design system) |
+
+## Project structure
+
+```
+api/                 Express API (public jobs, auth, admin, Q&A, blog)
+public-portal/       React site + admin panel
+  api/               Vercel functions: SEO render and sitemap
+  seo/render.js      Server-side meta / JSON-LD renderer
+  src/lib/           Sector config, status rules, filters, slugs
+scraper.js           Source scraper
+auto-publish.js      Publishing rules (stale / generic / publish)
+scripts/             Seed import
+seed/                Hand-checked jobs, rejects and corrections
+migrations/          SQL for Q&A and blog tables
+sources.json         Scraper source list and filters
+```
+
+## Running locally
 
 ```bash
 npm install
 npm --prefix public-portal install
-npm --prefix admin-panel install
+# Preview the site with sample data (no database needed):
+cd public-portal && VITE_DEMO_DATA=true npm run dev
 ```
 
-Create local environment files from the committed examples:
+Full setup — Supabase schema, environment variables, deployment and scraper operations — is in [docs/SETUP.md](docs/SETUP.md).
 
-```bash
-cp .env.example .env
-cp public-portal/.env.example public-portal/.env
-cp admin-panel/.env.example admin-panel/.env
-```
+## Notes
 
-Never commit the resulting `.env` files. Populate the backend file with your
-Supabase project URL and keys. The service-role key must remain server-side and
-must never be exposed through a `VITE_` variable.
+- All job information links back to the official recruiting organisation; the site is an independent information service and is not affiliated with any government body.
+- The scraper reads public pages only and does not bypass logins or CAPTCHAs.
 
-Apply the existing SQL files in Supabase as described in
-[AUTH_API.md](AUTH_API.md) and [RECOMMENDATION_API.md](RECOMMENDATION_API.md).
+## Author
 
-## Running locally
-
-Start the API:
-
-```bash
-npm run api
-```
-
-Start the public portal:
-
-```bash
-npm --prefix public-portal run dev
-```
-
-Start the admin panel:
-
-```bash
-npm --prefix admin-panel run dev
-```
-
-The default local addresses are:
-
-- API: `http://localhost:3000`
-- Public portal: `http://localhost:5174`
-- Admin panel: `http://localhost:5173`
-
-## Scraper commands
-
-Full production scraper setup is documented in
-[SCRAPER_RUNBOOK.md](SCRAPER_RUNBOOK.md).
-
-Discover links without writing data:
-
-```bash
-npm run discover -- <source-id>
-```
-
-Run the scraper:
-
-```bash
-npm run scrape
-```
-
-Useful source validation commands:
-
-```bash
-node diagnose.js <source-id>
-node scraper.js --discover <source-id>
-node scraper.js --only <source-id> --dry
-```
-
-New finds are published automatically by the rules in `auto-publish.js`:
-finds that mention only past years are stored as `rejected`, finds with a
-generic title ("Click here…") stay `pending` for an admin, and everything else
-is published with its official title and link. The generic harvesting strategy
-is deliberate; source-specific overrides (including `exclude` patterns) are
-configured in `sources.json`.
-
-## Publishing jobs
-
-- **Automatic:** the `scrape` workflow runs every 2 hours and publishes new
-  finds as described above.
-- **Hand-checked jobs:** add entries to `seed/jobs.json` (and old URLs to
-  `seed/reject-urls.json`). When the change reaches `main`, the `import-seed`
-  workflow publishes them and applies the same rules to anything still
-  pending. Rows already published are never overwritten, so edits made in
-  `/admin` are kept.
-- **Corrections:** `seed/overrides.json` changes specific existing rows
-  (matched by `id` or `url`), including published ones — e.g. hide an old
-  result or give a vague auto-published title a proper name. Only the keys
-  listed in an entry are changed.
-- **Admin:** `/admin` lists pending, published and rejected posts with
-  Source / Reject / Review actions; `/admin/questions` moderates visitor
-  questions shown on job pages.
-- **One-time setup for questions:** run `migrations/2026-09-26-job-questions.sql`
-  in the Supabase SQL Editor.
-- **Blog:** `/admin/blog` writes Markdown articles (draft / published) shown at
-  `/blog`. One-time setup: run `migrations/2026-09-26-blog.sql`.
-
-## SEO
-
-- `public-portal/api/seo.js` (Vercel function) serves `/jobs/:id` and
-  `/blog/:slug` with page-specific title, description, canonical URL, Open
-  Graph tags, JSON-LD (JobPosting / NewsArticle / BlogPosting / BreadcrumbList)
-  and a plain-HTML summary, so search engines and WhatsApp/Telegram previews
-  see real content. Rendering lives in `public-portal/seo/render.js`.
-- `public-portal/api/sitemap.js` serves `/sitemap.xml` with every published
-  job and article; `robots.txt` is generated at build time.
-- Job URLs carry the title (`/jobs/123-ssc-cgl-2026`); the leading number is
-  what is looked up, so older `/jobs/123` links keep working.
-
-## API
-
-The main endpoints include:
-
-- `GET /health`
-- `GET /api/jobs`
-- `GET /api/jobs/:id`
-- `GET /api/search`
-- `GET /api/latest`
-- `GET /api/statistics`
-- `/api/auth/*`
-- `/api/profile`
-- `/api/user/jobs/*`
-- `/api/recommendations/*`
-
-API responses use structured success and error objects. Authentication uses
-short-lived access tokens and an HTTP-only refresh cookie.
-
-See [AUTH_API.md](AUTH_API.md) and
-[RECOMMENDATION_API.md](RECOMMENDATION_API.md) for detailed contracts.
-
-## Testing
-
-Run the complete suite:
-
-```bash
-npm run test:all
-```
-
-Individual commands:
-
-```bash
-npm run test:coverage
-npm --prefix public-portal run test:coverage
-npm --prefix admin-panel run test:coverage
-npm run test:e2e
-```
-
-The GitHub Actions test workflow runs backend, component, route, production
-build, and Playwright tests. See [TESTING.md](TESTING.md) and
-[TEST_REPORT.md](TEST_REPORT.md).
-
-## Production deployment
-
-Production configuration is documented in [DEPLOYMENT.md](DEPLOYMENT.md).
-
-- `render.yaml` provisions the Express API on Render.
-- `public-portal/vercel.json` configures the public SPA on Vercel.
-- `admin-panel/vercel.json` configures the protected admin SPA on Vercel.
-- `.env.production.example` files document required production variables.
-
-After deployment, run:
-
-```bash
-npm run verify:deployment
-```
-
-## Security
-
-- Environment and secret files are ignored by Git.
-- Supabase service credentials are used only by server-side code.
-- Production startup rejects missing credentials, wildcard CORS, and insecure
-  frontend origins.
-- Authentication and API endpoints are rate-limited and input-validated.
-- Refresh tokens use HTTP-only secure cookies in production.
-- The API uses Helmet, compression, explicit CORS origins, and structured
-  error handling.
-- New jobs require human review before publication.
-
-If you discover a vulnerability, report it privately to the repository owner
-instead of opening a public issue containing exploit details or credentials.
-
-## Project documentation
-
-- [DEPLOYMENT.md](DEPLOYMENT.md)
-- [PROJECT_AUDIT.md](PROJECT_AUDIT.md)
-- [SCRAPER_RUNBOOK.md](SCRAPER_RUNBOOK.md)
-- [SOURCES_REPORT.md](SOURCES_REPORT.md)
-- [CLI_HELP.md](CLI_HELP.md)
-- [AUTH_API.md](AUTH_API.md)
-- [RECOMMENDATION_API.md](RECOMMENDATION_API.md)
-- [TESTING.md](TESTING.md)
-
-## License
+Built by [Mayank Kumar Singh](https://github.com/mayankksingh5).
 
 Released under the [MIT License](LICENSE).
