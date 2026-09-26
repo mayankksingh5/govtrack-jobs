@@ -21,7 +21,8 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          # supabase-js needs Node 22+ (native WebSocket); on Node 20 it throws at createClient.
+          node-version: '22'
           cache: npm
 
       - run: npm ci
