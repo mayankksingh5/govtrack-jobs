@@ -105,9 +105,27 @@ node scraper.js --discover <source-id>
 node scraper.js --only <source-id> --dry
 ```
 
-Scraped records remain `pending` until human review. The generic harvesting
-strategy is deliberate; source-specific overrides are configured in
-`sources.json`.
+New finds are published automatically by the rules in `auto-publish.js`:
+finds that mention only past years are stored as `rejected`, finds with a
+generic title ("Click here…") stay `pending` for an admin, and everything else
+is published with its official title and link. The generic harvesting strategy
+is deliberate; source-specific overrides (including `exclude` patterns) are
+configured in `sources.json`.
+
+## Publishing jobs
+
+- **Automatic:** the `scrape` workflow runs every 2 hours and publishes new
+  finds as described above.
+- **Hand-checked jobs:** add entries to `seed/jobs.json` (and old URLs to
+  `seed/reject-urls.json`). When the change reaches `main`, the `import-seed`
+  workflow publishes them and applies the same rules to anything still
+  pending. Rows already published are never overwritten, so edits made in
+  `/admin` are kept.
+- **Admin:** `/admin` lists pending, published and rejected posts with
+  Source / Reject / Review actions; `/admin/questions` moderates visitor
+  questions shown on job pages.
+- **One-time setup for questions:** run `migrations/2026-09-26-job-questions.sql`
+  in the Supabase SQL Editor.
 
 ## API
 
