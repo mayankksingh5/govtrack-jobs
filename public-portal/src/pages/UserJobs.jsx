@@ -7,21 +7,37 @@ import SEO from '../components/SEO.jsx';
 import { EmptyState, ErrorState, PageSkeleton } from '../components/States.jsx';
 import { useRequest } from '../hooks/useRequest.js';
 
+const LABELS = { saved: 'Saved Jobs', recent: 'Recently Viewed Jobs', applied: 'Applied Jobs' };
+
 export default function UserJobs({ kind = 'saved' }) {
   const [page, setPage] = useState(1);
-  const loader = useCallback(() => getUserJobs(kind, { page, limit: 18 }), [kind, page]);
+  const loader = useCallback(() => getUserJobs(kind, { page, limit: 10 }), [kind, page]);
   const { data, loading, error, reload } = useRequest(loader, [loader]);
-  const labels = { saved: 'Saved Jobs', recent: 'Recently Viewed Jobs', applied: 'Applied Jobs' };
   const remove = async (id) => { await removeSavedJob(id); reload(); };
   return (
-    <>
-      <SEO title={labels[kind]} description={`View your ${labels[kind].toLowerCase()}.`} path={`/${kind === 'recent' ? 'recently-viewed' : `${kind}-jobs`}`} />
-      <div className="container py-10">
-        <Breadcrumbs items={[{ label: labels[kind] }]} />
-        <div className="page-heading"><h1>{labels[kind]}</h1><p>Private activity associated with your account.</p></div>
-        <div className="mt-8">{loading ? <PageSkeleton /> : error ? <ErrorState message={error} retry={reload} /> : !data.data.length ? <EmptyState title={`No ${labels[kind].toLowerCase()}`} description="Jobs will appear here as you use the portal." /> : <div className="grid gap-4 lg:grid-cols-3">{data.data.map((job) => <div key={job.id}><JobCard job={job} />{kind === 'saved' && <button className="button-secondary mt-2 w-full" onClick={() => remove(job.id)}>Remove saved job</button>}</div>)}</div>}</div>
+    <main className="listing-page">
+      <SEO title={LABELS[kind]} description={`View your ${LABELS[kind].toLowerCase()}.`} path={`/${kind === 'recent' ? 'recently-viewed' : `${kind}-jobs`}`} />
+      <div className="container">
+        <Breadcrumbs items={[{ label: 'Profile', to: '/profile' }, { label: LABELS[kind] }]} />
+        <div className="listing-title">
+          <div>
+            <span>YOUR ACTIVITY</span>
+            <h1>{LABELS[kind]}</h1>
+            <p>Private activity associated with your account.</p>
+          </div>
+        </div>
+        <div className="job-list">
+          {loading ? <PageSkeleton /> : error ? <ErrorState message={error} retry={reload} /> : data.data.length ? (
+            data.data.map((job) => (
+              <div key={job.id} className="job-list">
+                <JobCard job={job} />
+                {kind === 'saved' && <button className="button secondary" onClick={() => remove(job.id)}>Remove saved job</button>}
+              </div>
+            ))
+          ) : <EmptyState title={`No ${LABELS[kind].toLowerCase()} yet`} description="Jobs will appear here as you use GovTrack." />}
+        </div>
         {data && <Pagination page={data.page} pages={data.pages} onChange={setPage} />}
       </div>
-    </>
+    </main>
   );
 }

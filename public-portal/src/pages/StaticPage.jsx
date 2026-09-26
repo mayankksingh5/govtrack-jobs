@@ -2,26 +2,27 @@ import Breadcrumbs from '../components/Breadcrumbs.jsx';
 import SEO from '../components/SEO.jsx';
 
 const content = {
-  about: ['About', 'We make published government opportunities easier to discover while directing applicants to official notifications and application pages.', ['This portal is an independent information service.', 'Job records are sourced from published notices and remain subject to official confirmation.', 'Human review should be completed before records are published.']],
-  contact: ['Contact', 'Questions, corrections, or feedback can be sent to the portal operator.', ['Configure an official support email before deployment.', 'Do not send application forms, identity documents, or payment information through this portal.']],
-  privacy: ['Privacy Policy', 'This page explains the portal’s baseline privacy approach.', ['The public job browser does not require an account.', 'Hosting and analytics providers may process standard request metadata.', 'Do not submit sensitive personal information through public contact channels.']],
-  terms: ['Terms of Use', 'Use of this portal is subject to these basic terms.', ['Information is provided for convenient discovery.', 'Users must verify all dates, fees, and eligibility with the recruiting organization.', 'Availability of third-party government websites is not guaranteed.']],
-  disclaimer: ['Disclaimer', 'This is not an official government website.', ['The portal does not represent any government department or recruiting body.', 'Official notifications take precedence over every summary shown here.', 'The portal is not responsible for decisions made using outdated or incomplete information.']],
+  about: ['About', 'GovTrack Jobs brings government job notifications, admit cards, results and exam dates together in one place, with a direct link to the official source for every update.', ['GovTrack Jobs is an independent information service and is not affiliated with any government department or recruiting body.', 'Updates are collected from official websites and notifications, and reviewed before publication.', 'Always confirm dates, fees and eligibility in the official notification before applying.']],
+  contact: ['Contact', 'Questions, corrections, or feedback can be sent to the GovTrack Jobs team.', ['If you spot an incorrect date or broken link, tell us which update it is so we can check it against the official source.', 'Do not send application forms, identity documents, or payment information through this website.']],
+  privacy: ['Privacy Policy', 'This page explains how GovTrack Jobs handles your information.', ['Browsing jobs does not require an account.', 'If you create an account, we store your name, email address and the preferences you choose so we can show saved jobs and recommendations.', 'Hosting and analytics providers may process standard request metadata such as IP address and browser type.', 'Do not submit sensitive personal information through public contact channels.']],
+  terms: ['Terms of Use', 'Use of GovTrack Jobs is subject to these terms.', ['Information is provided to make government opportunities easier to discover.', 'You must verify all dates, fees, and eligibility with the recruiting organization.', 'Availability of third-party government websites is not guaranteed.']],
+  disclaimer: ['Disclaimer', 'GovTrack Jobs is not an official government website.', ['GovTrack Jobs does not represent any government department or recruiting body and does not conduct any recruitment.', 'Official notifications take precedence over every summary shown here.', 'GovTrack Jobs is not responsible for decisions made using outdated or incomplete information.']],
 };
 
 export default function StaticPage({ type }) {
   const [title, intro, paragraphs] = content[type];
   return (
-    <>
+    <main className="listing-page">
       <SEO title={title} description={intro} path={`/${type}`} />
-      <div className="container max-w-4xl py-10">
+      <div className="container">
         <Breadcrumbs items={[{ label: title }]} />
-        <article className="panel px-6 py-10 sm:px-12">
-          <h1 className="font-serif text-4xl font-semibold">{title}</h1>
-          <p className="mt-5 text-lg leading-8 text-[#52645f]">{intro}</p>
-          <div className="mt-8 space-y-5 leading-7 text-[#52645f]">{paragraphs.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}</div>
+        <article className="prose-card">
+          <span>GOVTRACK JOBS</span>
+          <h1>{title}</h1>
+          <p className="lead">{intro}</p>
+          {paragraphs.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
         </article>
       </div>
-    </>
+    </main>
   );
 }

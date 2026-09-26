@@ -1,92 +1,196 @@
-import { useState } from 'react';
-import { Link, NavLink, Outlet } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
+import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext.jsx';
+import { SECTOR_KEYS, SECTORS } from '../lib/sectors.js';
+import Icon from './Icon.jsx';
+import { SectorIcon } from './UI.jsx';
 
-const nav = [
+const NAV = [
   ['Home', '/'],
-  ['Latest Jobs', '/jobs'],
-  ['Search', '/search'],
-  ['For You', '/for-you'],
-  ['About', '/about'],
+  ['Jobs', '/jobs'],
+  ['Exams', '/exams'],
+  ['Results', '/results'],
+  ['Admit Cards', '/admit-cards'],
+  ['Answer Key', '/answer-keys'],
+  ['Cut Off', '/cut-off'],
+  ['Exam Calendar', '/exam-calendar'],
+  ['Syllabus', '/syllabus'],
 ];
 
-export default function Layout() {
-  const [open, setOpen] = useState(false);
-  const { user, logout } = useAuth();
+function Logo() {
   return (
-    <div className="min-h-screen bg-[#f7f8f3] text-[#12231f]">
-      <header className="sticky top-0 z-40 border-b border-[#163b31]/10 bg-[#f7f8f3]/92 backdrop-blur-xl">
-        <div className="container flex h-18 items-center justify-between">
-          <Link to="/" className="flex items-center gap-3" aria-label="Government Jobs Portal home">
-            <span className="grid h-10 w-10 place-items-center rounded-xl bg-[#123d31] font-serif text-lg font-bold text-white">GJ</span>
-            <span>
-              <strong className="block text-sm leading-tight">Government Jobs</strong>
-              <span className="text-[10px] font-bold tracking-[.18em] text-[#b4522b]">OFFICIAL LINKS, CLEAR DETAILS</span>
-            </span>
+    <Link className="brand" to="/" aria-label="GovTrack Jobs home">
+      <span className="brand-symbol"><span>G</span></span>
+      <span className="brand-copy">
+        <strong>GovTrack</strong>
+        <small>JOBS &amp; EXAMS</small>
+      </span>
+    </Link>
+  );
+}
+
+function HeaderSearch() {
+  const navigate = useNavigate();
+  const input = useRef(null);
+  const [query, setQuery] = useState('');
+
+  // ⌘K / Ctrl+K focuses the header search, as hinted by the design.
+  useEffect(() => {
+    const onKey = (event) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault();
+        input.current?.focus();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
+  const submit = (event) => {
+    event.preventDefault();
+    const value = query.trim();
+    navigate(value ? `/search?q=${encodeURIComponent(value)}` : '/search');
+  };
+  return (
+    <form className="header-search" role="search" onSubmit={submit}>
+      <Icon name="search" size={18} />
+      <input
+        ref={input}
+        aria-label="Search"
+        value={query}
+        onChange={(event) => setQuery(event.target.value)}
+        placeholder="Search jobs, exams, organizations..."
+      />
+      <kbd>⌘ K</kbd>
+    </form>
+  );
+}
+
+function Header() {
+  const { user } = useAuth();
+  const location = useLocation();
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [sectorsOpen, setSectorsOpen] = useState(false);
+
+  useEffect(() => {
+    setMobileOpen(false);
+    setSectorsOpen(false);
+  }, [location.pathname]);
+
+  return (
+    <>
+      <div className="official-strip">
+        <div className="container strip-inner">
+          <span>Independent job information platform</span>
+          <span className="verified-note">
+            <Icon name="verified" size={14} /> Updates verified from official sources
+          </span>
+        </div>
+      </div>
+      <header className="header">
+        <div className="container header-main">
+          <Logo />
+          <HeaderSearch />
+          <Link className="icon-button notification" to="/results" aria-label="Latest updates">
+            <Icon name="bell" />
+            <span />
           </Link>
-          <nav className="hidden items-center gap-1 md:flex" aria-label="Main navigation">
-            {nav.map(([label, path]) => (
-              <NavLink key={path} to={path} className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`} end={path === '/'}>
-                {label}
-              </NavLink>
-            ))}
-          </nav>
-          <div className="hidden items-center gap-2 md:flex">
-            {user ? (
-              <>
-                <Link className="button-secondary" to="/saved-jobs">Saved</Link>
-                <Link className="button-secondary" to="/profile">{user.name || 'Profile'}</Link>
-                <button className="button-secondary" onClick={logout}>Logout</button>
-              </>
-            ) : <Link className="button-secondary" to="/login">Login</Link>}
-          </div>
-          <button className="button-secondary md:hidden" onClick={() => setOpen((value) => !value)} aria-expanded={open} aria-label="Toggle navigation">
-            Menu
+          <Link className="profile-button" to={user ? '/profile' : '/login'}>
+            <span className="avatar"><Icon name="user" size={17} /></span>
+            <span>{user ? user.name || 'Profile' : 'Login'}</span>
+          </Link>
+          <button
+            className="icon-button mobile-menu"
+            onClick={() => setMobileOpen((open) => !open)}
+            aria-label="Open menu"
+            aria-expanded={mobileOpen}
+          >
+            <Icon name="menu" />
           </button>
         </div>
-        {open && (
-          <nav className="container grid gap-1 border-t border-[#163b31]/10 py-3 md:hidden">
-            {nav.map(([label, path]) => <NavLink key={path} to={path} onClick={() => setOpen(false)} className="nav-link">{label}</NavLink>)}
-            {user ? (
-              <>
-                <NavLink to="/profile" className="nav-link">Profile</NavLink>
-                <NavLink to="/saved-jobs" className="nav-link">Saved Jobs</NavLink>
-                <button onClick={logout} className="nav-link text-left">Logout</button>
-              </>
-            ) : <NavLink to="/login" className="nav-link">Login</NavLink>}
-          </nav>
-        )}
+        <nav className={`container nav ${mobileOpen ? 'nav-open' : ''}`} aria-label="Main navigation">
+          <div className="nav-dropdown">
+            <button
+              className="nav-categories"
+              onClick={() => setSectorsOpen((open) => !open)}
+              aria-expanded={sectorsOpen}
+            >
+              <Icon name="grid" size={16} /> Categories <Icon name="chevron" size={15} />
+            </button>
+            {sectorsOpen && (
+              <div className="sector-menu">
+                {SECTOR_KEYS.map((sector) => (
+                  <Link key={sector} className={`sector-${sector}`} to={`/category/${sector}`}>
+                    <SectorIcon sector={sector} size={14} />
+                    {SECTORS[sector].label}
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+          {NAV.map(([label, path]) => (
+            <NavLink key={label} to={path} end={path === '/'}>{label}</NavLink>
+          ))}
+        </nav>
       </header>
-      <main><Outlet /></main>
-      <Footer />
-    </div>
+    </>
   );
 }
 
 function Footer() {
   return (
-    <footer className="mt-20 bg-[#0c2922] text-white">
-      <div className="container grid gap-10 py-14 md:grid-cols-[1.5fr_1fr_1fr]">
+    <footer>
+      <div className="container">
+        <Logo />
+        <p>Independent information platform. Always verify details on the official website before applying.</p>
         <div>
-          <p className="font-serif text-2xl font-semibold">Government Jobs Portal</p>
-          <p className="mt-3 max-w-md text-sm leading-6 text-white/65">
-            A discovery portal for published government opportunities. Always verify dates and eligibility in the official notification.
-          </p>
-        </div>
-        <div>
-          <p className="text-xs font-bold uppercase tracking-widest text-[#f5a36f]">Explore</p>
-          <div className="mt-4 grid gap-2 text-sm text-white/70">
-            <Link to="/jobs">Latest Jobs</Link><Link to="/search">Advanced Search</Link><Link to="/about">About</Link><Link to="/contact">Contact</Link>
-          </div>
-        </div>
-        <div>
-          <p className="text-xs font-bold uppercase tracking-widest text-[#f5a36f]">Legal</p>
-          <div className="mt-4 grid gap-2 text-sm text-white/70">
-            <Link to="/privacy">Privacy Policy</Link><Link to="/terms">Terms</Link><Link to="/disclaimer">Disclaimer</Link>
-          </div>
+          <nav className="footer-links" aria-label="Legal">
+            <Link to="/about">About</Link>
+            <Link to="/contact">Contact</Link>
+            <Link to="/privacy">Privacy</Link>
+            <Link to="/terms">Terms</Link>
+            <Link to="/disclaimer">Disclaimer</Link>
+          </nav>
+          <span>© {new Date().getFullYear()} GovTrack Jobs</span>
         </div>
       </div>
-      <div className="border-t border-white/10 py-5 text-center text-xs text-white/45">Not an official government website.</div>
     </footer>
+  );
+}
+
+function BottomNav() {
+  const { user } = useAuth();
+  const { pathname } = useLocation();
+  const items = [
+    ['home', 'Home', '/', (path) => path === '/'],
+    ['briefcase', 'Jobs', '/jobs', (path) => path.startsWith('/jobs') || path.startsWith('/search')],
+    ['exam', 'Exams', '/exams', (path) => path.startsWith('/exam')],
+    ['trophy', 'Results', '/results', (path) => path.startsWith('/results')],
+    ['user', 'Profile', user ? '/profile' : '/login', (path) => ['/profile', '/login'].includes(path)],
+  ];
+  return (
+    <nav className="bottom-nav" aria-label="Quick navigation">
+      {items.map(([icon, label, to, isActive]) => (
+        <Link key={label} to={to} className={isActive(pathname) ? 'active' : ''}>
+          <Icon name={icon} size={20} />
+          <span>{label}</span>
+        </Link>
+      ))}
+    </nav>
+  );
+}
+
+export default function Layout() {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    window.scrollTo({ top: 0 });
+  }, [pathname]);
+  return (
+    <div className="app-shell">
+      <Header />
+      <Outlet />
+      <Footer />
+      <BottomNav />
+    </div>
   );
 }

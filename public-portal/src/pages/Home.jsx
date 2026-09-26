@@ -1,85 +1,225 @@
-import { getJobs, getLatest, getStatistics } from '../api.js';
-import { CategoryCard, OrganizationCard } from '../components/Cards.jsx';
-import JobCard from '../components/JobCard.jsx';
+import { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { getJobs } from '../api.js';
+import Icon from '../components/Icon.jsx';
+import JobCard, { CompactCard } from '../components/JobCard.jsx';
 import SearchBar from '../components/SearchBar.jsx';
 import SEO from '../components/SEO.jsx';
 import { EmptyState, ErrorState, PageSkeleton } from '../components/States.jsx';
+import { Badge, SectionHeading, SectorCard } from '../components/UI.jsx';
 import { useRequest } from '../hooks/useRequest.js';
-import { groupByCount } from '../utils.js';
-import RecommendedSection from '../components/RecommendedSection.jsx';
+import { newestFirst } from '../lib/filters.js';
+import { daysUntil, displayDate, isOpen, orgMarkFor, parseDate, statusOf, timeAgo, vacanciesFor } from '../lib/jobs.js';
+import { HOME_SECTORS, POPULAR_SECTORS, SECTORS, sectorOf } from '../lib/sectors.js';
+import { titleFor } from '../utils.js';
 
-const categories = [
-  ['PSU', 'psu', 'Public sector opportunities'],
-  ['SSC', 'ssc', 'Staff Selection Commission'],
-  ['UPSC', 'upsc', 'Union Public Service Commission'],
-  ['Banking', 'banking', 'Public banking careers'],
-  ['Railway', 'railway', 'Railway recruitment'],
-  ['Defence', 'defence', 'Armed forces and defence'],
-  ['Teaching', 'teaching', 'Education and teaching'],
-  ['Engineering', 'engineering', 'Technical opportunities'],
-];
+const STATUSES = ['All', 'Upcoming', 'Active', 'Closing Soon', 'Admit Card', 'Exam', 'Answer Key', 'Result', 'Cut Off'];
 
-function JobSection({ title, description, jobs, unavailable }) {
+function SearchHero() {
   return (
-    <section className="section">
-      <div className="section-heading"><div><h2>{title}</h2><p>{description}</p></div></div>
-      {unavailable ? <EmptyState title="Data unavailable" description={unavailable} /> : jobs?.length ? (
-        <div className="grid gap-4 lg:grid-cols-3">{jobs.slice(0, 6).map((job) => <JobCard key={job.id} job={job} />)}</div>
-      ) : <EmptyState title={`No ${title.toLowerCase()}`} description="No published records are currently available." />}
+    <section className="hero">
+      <div className="hero-orb orb-one" />
+      <div className="hero-orb orb-two" />
+      <div className="container hero-inner">
+        <div className="hero-eyebrow"><span /> Verified updates, simplified for you</div>
+        <h1>
+          Government Jobs &amp; Exams
+          <br />
+          <em>All Updates in One Place</em>
+        </h1>
+        <p>Find upcoming notifications, active forms, admit cards, results and exam updates from official sources.</p>
+        <SearchBar />
+        <div className="category-chips">
+          <span>Popular:</span>
+          {POPULAR_SECTORS.map((sector) => (
+            <Link className={`sector-${sector}`} key={sector} to={`/category/${sector}`}>
+              <span />
+              {SECTORS[sector].label}
+            </Link>
+          ))}
+        </div>
+      </div>
     </section>
   );
 }
 
+function StatRow({ stats }) {
+  const items = [
+    ['green', 'briefcase', stats.active, 'Active applications'],
+    ['blue', 'calendar', stats.upcomingExams, 'Upcoming exams'],
+    ['amber', 'clock', stats.closingWeek, 'Closing this week'],
+    ['purple', 'trophy', stats.resultsMonth, 'Results this month'],
+  ];
+  return (
+    <div className="container stat-row">
+      {items.map(([tone, icon, value, label]) => (
+        <div key={label}>
+          <span className={`stat-icon ${tone}`}><Icon name={icon} /></span>
+          <p>
+            <strong>{value ?? '—'}</strong>
+            <small>{label}</small>
+          </p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function SideUpdates({ updates, closing }) {
+  return (
+    <aside className="sidebar">
+      <div className="side-card">
+        <div className="side-card-title">
+          <div>
+            <span>LIVE UPDATES</span>
+            <h3>Latest updates</h3>
+          </div>
+          <span className="live-dot" />
+        </div>
+        {updates.length ? updates.map((job) => (
+          <Link className="update-row" key={job.id} to={`/jobs/${job.id}`}>
+            <span className={`mini-mark sector-${sectorOf(job)}`}>{orgMarkFor(job)}</span>
+            <span>
+              <Badge status={statusOf(job)} />
+              <strong>{titleFor(job)}</strong>
+              <small>
+                {job.exam_date ? `Exam on ${displayDate(job.exam_date)}` : `Released ${timeAgo(job.published_at) || 'recently'}`}
+              </small>
+            </span>
+            <Icon name="chevron" size={16} />
+          </Link>
+        )) : <p className="side-empty">No admit cards or results published yet.</p>}
+        <Link className="side-view" to="/results">
+          View all updates <Icon name="arrow" size={16} />
+        </Link>
+      </div>
+      <div className="side-card closing-card">
+        <div className="side-card-title">
+          <div>
+            <span>DON'T MISS OUT</span>
+            <h3>Closing soon</h3>
+          </div>
+          <Icon name="clock" />
+        </div>
+        {closing.length ? closing.map((job) => {
+          const days = daysUntil(job.last_date);
+          return (
+            <Link className="deadline-row" key={job.id} to={`/jobs/${job.id}`}>
+              <span className={days <= 2 ? 'hot' : ''}>
+                {days}
+                <small>{days === 1 ? 'DAY' : 'DAYS'}</small>
+              </span>
+              <p>
+                <strong>{titleFor(job)}</strong>
+                <small>{vacanciesFor(job)} vacancies</small>
+              </p>
+              <Icon name="chevron" size={16} />
+            </Link>
+          );
+        }) : <p className="side-empty">No application deadlines coming up.</p>}
+      </div>
+    </aside>
+  );
+}
+
 export default function Home() {
+  const [status, setStatus] = useState('All');
   const { data, loading, error, reload } = useRequest(async () => {
-    const [latest, stats, admit, results, keys] = await Promise.all([
-      getLatest(12),
-      getStatistics(),
-      getJobs({ category: 'admit_card', limit: 6, page: 1, sort: 'newest' }),
-      getJobs({ category: 'result', limit: 6, page: 1, sort: 'newest' }),
-      getJobs({ category: 'answer_key', limit: 6, page: 1, sort: 'newest' }),
+    const query = (category, limit) => getJobs({ category, limit, page: 1, sort: 'newest' });
+    const [jobs, admits, results, keys] = await Promise.all([
+      query('job', 100),
+      query('admit_card', 20),
+      query('result', 50),
+      query('answer_key', 20),
     ]);
-    return { latest: latest.data || [], stats: stats.data?.[0] || {}, admit: admit.data || [], results: results.data || [], keys: keys.data || [] };
+    return { jobs: jobs.data || [], admits: admits.data || [], results: results.data || [], keys: keys.data || [] };
   }, []);
+
+  const view = useMemo(() => {
+    if (!data) return null;
+    const { jobs, admits, results, keys } = data;
+    const all = [...jobs, ...admits, ...results, ...keys].sort(newestFirst);
+    const open = jobs.filter(isOpen);
+    const now = new Date();
+    const counts = Object.fromEntries(
+      HOME_SECTORS.map((sector) => {
+        const inSector = jobs.filter((job) => sectorOf(job) === sector);
+        return [sector, {
+          active: inSector.filter(isOpen).length,
+          upcoming: inSector.filter((job) => statusOf(job) === 'Upcoming').length,
+        }];
+      })
+    );
+    return {
+      all,
+      open,
+      counts,
+      upcoming: all.filter((job) => ['Upcoming', 'Admit Card'].includes(statusOf(job))),
+      updates: [...admits, ...results, ...keys].sort(newestFirst).slice(0, 4),
+      closing: jobs
+        .filter((job) => (daysUntil(job.last_date) ?? -1) >= 0)
+        .sort((a, b) => daysUntil(a.last_date) - daysUntil(b.last_date))
+        .slice(0, 3),
+      stats: {
+        active: open.length,
+        upcomingExams: jobs.filter((job) => (daysUntil(job.exam_date) ?? -1) >= 0).length,
+        closingWeek: jobs.filter((job) => { const days = daysUntil(job.last_date); return days != null && days >= 0 && days <= 7; }).length,
+        resultsMonth: results.filter((job) => {
+          const published = parseDate(job.published_at);
+          return published && published.getMonth() === now.getMonth() && published.getFullYear() === now.getFullYear();
+        }).length,
+      },
+    };
+  }, [data]);
+
+  const listed = !view ? [] : status === 'All' ? view.open : view.all.filter((job) => statusOf(job) === status);
 
   return (
     <>
-      <SEO title="" description="Discover current government jobs, admit cards, results, and answer keys with direct official links." />
-      <section className="hero">
-        <div className="container py-20 text-center sm:py-28">
-          <p className="eyebrow">CURRENT OPPORTUNITIES · OFFICIAL SOURCES</p>
-          <h1 className="mx-auto mt-5 max-w-4xl font-serif text-5xl font-semibold leading-[1.05] tracking-tight sm:text-7xl">Your next public service opportunity, clearly presented.</h1>
-          <p className="mx-auto mt-6 max-w-2xl text-base leading-7 text-[#596b65] sm:text-lg">Search published government openings and move directly to the official notification or application.</p>
-          <div className="mt-9"><SearchBar /></div>
-        </div>
-      </section>
-      {loading ? <PageSkeleton /> : error ? <div className="container py-12"><ErrorState message={error} retry={reload} /></div> : (
-        <div className="container">
-          <RecommendedSection />
-          <JobSection title="Latest Jobs" description="Recently published opportunities" jobs={data.latest.filter((job) => job.type === 'job')} />
-          <JobSection title="Featured Jobs" description="Highlighted opportunities" unavailable="The API does not expose a featured-jobs field." />
-          <section className="section">
-            <div className="section-heading"><div><h2>Top Organizations</h2><p>Organizations represented in recent published jobs</p></div></div>
-            {groupByCount(data.latest, (job) => job.organization || job.source_name).length ? <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{groupByCount(data.latest, (job) => job.organization || job.source_name).slice(0, 8).map(([name, count]) => <OrganizationCard key={name} name={name} count={count} />)}</div> : <EmptyState />}
-          </section>
-          <section className="section">
-            <div className="section-heading"><div><h2>Popular Categories</h2><p>Browse common government recruitment sectors</p></div></div>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{categories.map(([label, slug, description]) => <CategoryCard key={slug} label={label} slug={slug} description={description} />)}</div>
-          </section>
-          <JobSection title="Latest Admit Cards" description="Recently published examination documents" jobs={data.admit} />
-          <JobSection title="Latest Results" description="Recently published selections and results" jobs={data.results} />
-          <JobSection title="Latest Answer Keys" description="Recently published answer keys" jobs={data.keys} />
-          <JobSection title="Latest Syllabus" description="Recently published syllabi" unavailable="The API has no syllabus category." />
-          <section className="section">
-            <div className="rounded-3xl bg-[#123d31] px-6 py-10 text-white sm:px-10">
-              <p className="eyebrow text-[#f3a06e]">PORTAL STATISTICS</p>
-              <div className="mt-7 grid gap-8 sm:grid-cols-3">
-                <div><strong className="font-serif text-4xl">{data.stats.published_jobs ?? 0}</strong><span className="mt-1 block text-sm text-white/60">Published records</span></div>
-                {Object.entries(data.stats.by_category || {}).slice(0, 2).map(([label, count]) => <div key={label}><strong className="font-serif text-4xl">{count}</strong><span className="mt-1 block text-sm capitalize text-white/60">{label.replaceAll('_', ' ')}</span></div>)}
-              </div>
+      <SEO title="" description="Government jobs and exams in one place: upcoming notifications, active forms, admit cards, results and exam dates from official sources." />
+      <SearchHero />
+      <StatRow stats={view?.stats || {}} />
+      {loading ? <PageSkeleton /> : error ? (
+        <main className="container main-content"><ErrorState message={error} retry={reload} /></main>
+      ) : (
+        <main className="container main-content">
+          <section className="sector-explore">
+            <SectionHeading eyebrow="BROWSE CATEGORIES" title="Explore by sector" viewTo="/category/banking" />
+            <div className="sector-grid">
+              {HOME_SECTORS.map((sector) => <SectorCard key={sector} sector={sector} counts={view.counts[sector]} />)}
             </div>
           </section>
-        </div>
+          <div className="filter-strip">
+            <span>Filter by status</span>
+            <div>
+              {STATUSES.map((item) => (
+                <button className={status === item ? 'active' : ''} key={item} onClick={() => setStatus(item)}>
+                  {item}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="content-grid">
+            <div>
+              <SectionHeading
+                eyebrow="APPLY NOW"
+                title={status === 'All' ? 'Active applications' : `${status} updates`}
+                count={listed.length}
+                viewTo="/jobs"
+              />
+              <div className="job-list">
+                {listed.length ? listed.slice(0, 4).map((job) => <JobCard key={job.id} job={job} />) : <EmptyState />}
+              </div>
+              <SectionHeading eyebrow="PLAN AHEAD" title="Upcoming notifications" count={view.upcoming.length} viewTo="/search" />
+              {view.upcoming.length ? (
+                <div className="compact-grid">
+                  {view.upcoming.slice(0, 4).map((job) => <CompactCard key={job.id} job={job} />)}
+                </div>
+              ) : <EmptyState title="No upcoming notifications" description="New notifications will appear here as soon as they are published." />}
+            </div>
+            <SideUpdates updates={view.updates} closing={view.closing} />
+          </div>
+        </main>
       )}
     </>
   );

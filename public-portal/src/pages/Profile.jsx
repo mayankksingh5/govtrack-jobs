@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { updateProfile } from '../api.js';
 import { useAuth } from '../auth/AuthContext.jsx';
 import Breadcrumbs from '../components/Breadcrumbs.jsx';
@@ -8,9 +9,9 @@ const join = (value) => (value || []).join(', ');
 const split = (value) => value.split(',').map((item) => item.trim()).filter(Boolean);
 
 export default function Profile() {
-  const { user, reloadProfile } = useAuth();
+  const { user, reloadProfile, logout } = useAuth();
   const [form, setForm] = useState(null);
-  const [message, setMessage] = useState('');
+  const [message, setMessage] = useState({ text: '' });
   useEffect(() => {
     if (user) setForm({
       name: user.name || '', avatar_url: user.avatar_url || '', qualification: user.qualification || '',
@@ -19,9 +20,10 @@ export default function Profile() {
     });
   }, [user]);
   if (!form) return null;
+  const set = (key) => (event) => setForm({ ...form, [key]: event.target.value });
   const submit = async (event) => {
     event.preventDefault();
-    setMessage('Saving…');
+    setMessage({ text: 'Saving…' });
     try {
       await updateProfile({
         ...form,
@@ -32,26 +34,34 @@ export default function Profile() {
         preferred_organizations: split(form.preferred_organizations),
       });
       await reloadProfile();
-      setMessage('Profile updated.');
-    } catch (error) { setMessage(error.message); }
+      setMessage({ text: 'Profile updated.' });
+    } catch (error) { setMessage({ text: error.message, error: true }); }
   };
   return (
-    <>
-      <SEO title="Your Profile" description="Manage your Government Jobs Portal preferences." path="/profile" />
-      <div className="container max-w-4xl py-10">
-        <Breadcrumbs items={[{ label: 'Profile' }]} />
-        <div className="page-heading"><h1>Your Profile</h1><p>{user.email} · {user.role}</p></div>
-        <form onSubmit={submit} className="panel mt-8 grid gap-4 sm:grid-cols-2">
-          <input className="input" required placeholder="Name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-          <input className="input" type="url" placeholder="Avatar HTTPS URL" value={form.avatar_url} onChange={(e) => setForm({ ...form, avatar_url: e.target.value })} />
-          <input className="input sm:col-span-2" placeholder="Qualification" value={form.qualification} onChange={(e) => setForm({ ...form, qualification: e.target.value })} />
-          <input className="input sm:col-span-2" placeholder="Skills, comma separated" value={form.skills} onChange={(e) => setForm({ ...form, skills: e.target.value })} />
-          <input className="input" placeholder="Preferred states" value={form.preferred_states} onChange={(e) => setForm({ ...form, preferred_states: e.target.value })} />
-          <input className="input" placeholder="Preferred organizations" value={form.preferred_organizations} onChange={(e) => setForm({ ...form, preferred_organizations: e.target.value })} />
-          <button className="button sm:col-span-2">Save profile</button>
-          {message && <p className="text-sm text-[#667771] sm:col-span-2" role="status">{message}</p>}
+    <main className="container form-page">
+      <SEO title="Your Profile" description="Manage your GovTrack Jobs preferences." path="/profile" />
+      <Breadcrumbs items={[{ label: 'Profile' }]} />
+      <div className="form-card wide">
+        <span>YOUR ACCOUNT</span>
+        <h1>{user.name || 'Your profile'}</h1>
+        <p>
+          {user.email} · <Link className="text-link" to="/saved-jobs">Saved jobs</Link> ·{' '}
+          <Link className="text-link" to="/applied-jobs">Applied jobs</Link> ·{' '}
+          <Link className="text-link" to="/recently-viewed">Recently viewed</Link> ·{' '}
+          <Link className="text-link" to="/for-you">For you</Link>
+        </p>
+        <form onSubmit={submit} className="form-grid two">
+          <label className="field"><span>Name</span><input required value={form.name} onChange={set('name')} /></label>
+          <label className="field"><span>Avatar HTTPS URL</span><input type="url" value={form.avatar_url} onChange={set('avatar_url')} /></label>
+          <label className="field span-2"><span>Qualification</span><input value={form.qualification} onChange={set('qualification')} placeholder="e.g. Graduate" /></label>
+          <label className="field span-2"><span>Skills (comma separated)</span><input value={form.skills} onChange={set('skills')} /></label>
+          <label className="field"><span>Preferred states</span><input value={form.preferred_states} onChange={set('preferred_states')} /></label>
+          <label className="field"><span>Preferred organizations</span><input value={form.preferred_organizations} onChange={set('preferred_organizations')} /></label>
+          <button className="button primary span-2">Save profile</button>
+          <button type="button" className="button secondary span-2" onClick={logout}>Logout</button>
+          {message.text && <p className={`form-message span-2 ${message.error ? 'error' : ''}`} role="status">{message.text}</p>}
         </form>
       </div>
-    </>
+    </main>
   );
 }

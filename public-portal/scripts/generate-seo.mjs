@@ -12,10 +12,19 @@ if (isProduction && (parsed.protocol !== 'https:' || apiUrl.protocol !== 'https:
   throw new Error('VITE_API_URL and VITE_SITE_URL must use HTTPS in production');
 }
 
+const sectors = ['banking', 'ssc', 'teaching', 'railway', 'defence', 'upsc', 'finance', 'csit', 'medical', 'police', 'engineering', 'state', 'other'];
+
 const paths = [
   '/',
   '/jobs',
   '/search',
+  '/exam-calendar',
+  '/results',
+  '/admit-cards',
+  '/answer-keys',
+  '/cut-off',
+  '/syllabus',
+  ...sectors.map((sector) => `/category/${sector}`),
   '/about',
   '/contact',
   '/privacy',

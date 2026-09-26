@@ -1,15 +1,37 @@
+import Icon from './Icon.jsx';
+
 export function PageSkeleton() {
-  return <div className="container py-12"><div className="animate-pulse space-y-4">{[120, 72, 72, 72].map((height, index) => <div key={index} style={{ height }} className="rounded-2xl bg-[#123d31]/8" />)}</div></div>;
+  return (
+    <div className="container skeleton-stack" aria-busy="true" aria-label="Loading">
+      {[140, 190, 190, 190].map((height, index) => <div key={index} style={{ height }} />)}
+    </div>
+  );
 }
 
 export function ErrorState({ message, retry }) {
-  return <div className="state-box border-red-200 bg-red-50"><p className="font-semibold text-red-800">Something went wrong</p><p className="mt-1 text-sm text-red-700/75">{message}</p>{retry && <button className="button mt-4" onClick={retry}>Try again</button>}</div>;
+  return (
+    <div className="empty-state error-state" role="alert">
+      <span><Icon name="clock" /></span>
+      <h3>Something went wrong</h3>
+      <p>{message}</p>
+      {retry && <button className="button primary" onClick={retry}>Try again</button>}
+    </div>
+  );
 }
 
-export function EmptyState({ title = 'No data available', description = 'There is nothing to display right now.' }) {
-  return <div className="state-box"><span className="text-2xl" aria-hidden="true">○</span><p className="mt-2 font-semibold">{title}</p><p className="mx-auto mt-1 max-w-lg text-sm text-[#52645f]">{description}</p></div>;
+export function EmptyState({
+  title = 'No updates match this filter',
+  description = 'Try another status or check back soon for verified updates.',
+}) {
+  return (
+    <div className="empty-state">
+      <span><Icon name="search" /></span>
+      <h3>{title}</h3>
+      <p>{description}</p>
+    </div>
+  );
 }
 
 export function DataUnavailable({ label = 'Data unavailable' }) {
-  return <span className="text-sm text-[#72807c]">{label}</span>;
+  return <span className="form-message">{label}</span>;
 }

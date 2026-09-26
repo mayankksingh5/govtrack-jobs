@@ -71,13 +71,27 @@ client.interceptors.response.use(
   }
 );
 
-export const getJobs = async (params = {}) => (await client.get('/api/jobs', { params })).data;
-export const searchJobs = async (params = {}) => (await client.get('/api/search', { params })).data;
-export const getLatest = async (limit = 12) => (await client.get('/api/latest', { params: { limit } })).data;
-export const getJob = async (id) => (await client.get(`/api/jobs/${id}`)).data;
-export const getStatistics = async () => (await client.get('/api/statistics')).data;
+/*
+  Local preview mode: `VITE_DEMO_DATA=true npm run dev` serves sample records
+  from demo.js instead of the API. `import.meta.env.DEV` is false in
+  production builds, so this branch and demo.js are removed from the bundle.
+*/
+const DEMO = import.meta.env.DEV && import.meta.env.VITE_DEMO_DATA === 'true';
+const demo = async (name, ...args) => (await import('./demo.js')).demoApi[name](...args);
+
+export const getJobs = async (params = {}) =>
+  DEMO ? demo('getJobs', params) : (await client.get('/api/jobs', { params })).data;
+export const searchJobs = async (params = {}) =>
+  DEMO ? demo('searchJobs', params) : (await client.get('/api/search', { params })).data;
+export const getLatest = async (limit = 12) =>
+  DEMO ? demo('getLatest', limit) : (await client.get('/api/latest', { params: { limit } })).data;
+export const getJob = async (id) => (DEMO ? demo('getJob', id) : (await client.get(`/api/jobs/${id}`)).data);
+export const getStatistics = async () =>
+  DEMO ? demo('getStatistics') : (await client.get('/api/statistics')).data;
 export const getRecommendations = async (params = {}) =>
-  (await client.get('/api/recommendations', { params, headers: recommendationHeaders() })).data;
+  DEMO
+    ? demo('getRecommendations', params)
+    : (await client.get('/api/recommendations', { params, headers: recommendationHeaders() })).data;
 export const getSimilarJobs = async (jobId, params = {}) =>
   (await client.get(`/api/recommendations/similar/${jobId}`, { params })).data;
 export const savePreferences = async (preferences) =>

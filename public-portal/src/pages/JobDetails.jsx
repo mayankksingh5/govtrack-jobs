@@ -1,41 +1,160 @@
-import { useCallback, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
-import { getJob, getSimilarJobs, recordJobActivity, SITE_URL, trackInteraction } from '../api.js';
+import { useCallback, useEffect, useState } from 'react';
+import { Link, useParams } from 'react-router-dom';
+import { getJob, recordJobActivity, SITE_URL, trackInteraction } from '../api.js';
 import { useAuth } from '../auth/AuthContext.jsx';
 import Breadcrumbs from '../components/Breadcrumbs.jsx';
-import JobCard from '../components/JobCard.jsx';
+import Icon from '../components/Icon.jsx';
 import SEO from '../components/SEO.jsx';
-import { DataUnavailable, ErrorState, PageSkeleton } from '../components/States.jsx';
+import { ErrorState, PageSkeleton } from '../components/States.jsx';
+import { Badge, OrgMark, SectionHeading, SectorBadge, useSaveJob } from '../components/UI.jsx';
 import { useRequest } from '../hooks/useRequest.js';
-import { findLink, formatDate, organizationFor, titleFor } from '../utils.js';
+import {
+  applyLinkFor,
+  daysUntil,
+  displayDate,
+  notificationLinkFor,
+  officialLinkFor,
+  parseDate,
+  statusOf,
+  timeAgo,
+  vacanciesFor,
+} from '../lib/jobs.js';
+import { SECTORS, sectorOf } from '../lib/sectors.js';
+import { organizationFor, titleFor } from '../utils.js';
+
+const TABS = ['Overview', 'Important Dates', 'Vacancy', 'Eligibility', 'Fees', 'Selection', 'Exam Pattern', 'Syllabus', 'Documents', 'Official Links', 'Updates'];
+const SEE_NOTIFICATION = 'Refer to the official notification';
+
+function timelineFor(job) {
+  const at = (type) => (job.type === type ? job.published_at : null);
+  const steps = [
+    { label: 'Notification released', date: job.type === 'job' ? job.published_at : null },
+    { label: 'Application started', date: job.apply_start },
+    { label: 'Application closing', date: job.last_date, key: 'close' },
+    { label: 'Correction window', date: null },
+    { label: 'Exam city information', date: null },
+    { label: 'Admit card', date: at('admit_card') },
+    { label: 'Preliminary exam', date: job.exam_date, key: 'exam' },
+    { label: 'Answer key', date: at('answer_key') },
+    { label: 'Result', date: at('result') },
+    { label: 'Final result', date: null },
+  ];
+  const done = (step) => {
+    const days = daysUntil(step.date);
+    return days != null && (days < 0 || (days === 0 && !step.key));
+  };
+  const current = steps.findIndex((step) => step.date && !done(step));
+  return steps.map((step, index) => ({
+    ...step,
+    state: !step.date ? 'pending' : done(step) ? 'complete' : index === current ? 'current' : 'upcoming',
+  }));
+}
+
+const STATE_BADGE = { complete: 'Completed', upcoming: 'Upcoming', pending: 'TBA' };
+
+function useCountdown(lastDate) {
+  const compute = useCallback(() => {
+    const end = parseDate(lastDate);
+    if (!end) return null;
+    end.setHours(23, 59, 59, 999);
+    const ms = end - Date.now();
+    if (ms < 0) return null;
+    return {
+      days: Math.floor(ms / 86_400_000),
+      hours: Math.floor(ms / 3_600_000) % 24,
+      mins: Math.floor(ms / 60_000) % 60,
+    };
+  }, [lastDate]);
+  const [left, setLeft] = useState(compute);
+  useEffect(() => {
+    setLeft(compute());
+    const timer = window.setInterval(() => setLeft(compute()), 30_000);
+    return () => window.clearInterval(timer);
+  }, [compute]);
+  return left;
+}
+
+function InfoList({ rows }) {
+  return (
+    <dl className="info-list">
+      {rows.map(([label, value]) => (
+        <div key={label}>
+          <dt>{label}</dt>
+          <dd>{value || SEE_NOTIFICATION}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
+function TabContent({ tab, job, title, notification }) {
+  const links = (job.important_links || []).filter((link) => /^https?:\/\//i.test(link.url || ''));
+  switch (tab) {
+    case 'Overview':
+      return <p>{job.short_info || `${organizationFor(job)} has published ${title}. Check the key dates, eligibility and official links before applying.`}</p>;
+    case 'Important Dates':
+      return <InfoList rows={[
+        ['Notification', displayDate(job.published_at)],
+        ['Application starts', displayDate(job.apply_start)],
+        ['Last date to apply', displayDate(job.last_date)],
+        ['Exam date', displayDate(job.exam_date)],
+      ]} />;
+    case 'Vacancy':
+      return <InfoList rows={[['Total vacancies', job.total_vacancy != null && vacanciesFor(job)], ['Post name', job.post_name]]} />;
+    case 'Eligibility':
+      return <InfoList rows={[['Qualification', job.qualification], ['Age limit', job.age_limit]]} />;
+    case 'Fees':
+      return <InfoList rows={[['Application fee', job.fee_info]]} />;
+    case 'Official Links':
+      return links.length ? (
+        <InfoList rows={links.map((link) => [link.label || 'Official link', (
+          <a href={link.url} target="_blank" rel="noopener noreferrer">Open link <Icon name="external" size={13} /></a>
+        )])} />
+      ) : <p>No official links have been added for this update yet.</p>;
+    case 'Updates':
+      return <InfoList rows={[
+        ['Published', displayDate(job.published_at)],
+        ['Last updated', job.updated_at && `${displayDate(job.updated_at)} (${timeAgo(job.updated_at)})`],
+        ['Source', job.source_name || 'Official website'],
+      ]} />;
+    default:
+      return (
+        <p>
+          {tab} details are published in the official notification.{' '}
+          {notification && <a className="text-link" href={notification} target="_blank" rel="noopener noreferrer">Open notification</a>}
+        </p>
+      );
+  }
+}
 
 export default function JobDetails() {
   const { id } = useParams();
   const { user } = useAuth();
-  const navigate = useNavigate();
-  const [activityMessage, setActivityMessage] = useState('');
-  const loader = useCallback(async () => {
-    const response = await getJob(id);
-    const job = response.data?.[0];
-    let related = [];
-    if (job) {
-      trackInteraction(job.id, 'viewed').catch(() => {});
-      if (user) recordJobActivity(job.id, 'viewed').catch(() => {});
-      try {
-        related = (await getSimilarJobs(job.id, { limit: 4, page: 1 })).data;
-      } catch { related = []; }
-    }
-    return { job, related };
-  }, [id, user]);
-  const { data, loading, error, reload } = useRequest(loader, [loader]);
-  if (loading) return <PageSkeleton />;
-  if (error || !data?.job) return <div className="container py-12"><ErrorState message={error || 'Job not found'} retry={reload} /></div>;
+  const [tab, setTab] = useState('Overview');
+  const loader = useCallback(async () => (await getJob(id)).data?.[0] || null, [id]);
+  const { data: job, loading, error, reload } = useRequest(loader, [loader]);
+  const { saved, save } = useSaveJob(job?.id);
+  const left = useCountdown(job?.last_date);
 
-  const job = data.job;
+  useEffect(() => {
+    if (!job) return;
+    trackInteraction(job.id, 'viewed').catch(() => {});
+    if (user) recordJobActivity(job.id, 'viewed').catch(() => {});
+  }, [job, user]);
+
+  if (loading) return <PageSkeleton />;
+  if (error || !job) {
+    return <main className="detail-page"><div className="container"><ErrorState message={error || 'Job not found'} retry={reload} /></div></main>;
+  }
+
   const title = titleFor(job);
   const organization = organizationFor(job);
-  const notification = findLink(job, /notification|official|pdf/i);
-  const apply = findLink(job, /apply/i);
+  const sector = sectorOf(job);
+  const status = statusOf(job);
+  const notification = notificationLinkFor(job);
+  const official = officialLinkFor(job);
+  const apply = applyLinkFor(job) || official;
+  const toClose = daysUntil(job.last_date);
   const canonicalPath = `/jobs/${job.id}`;
   const schema = job.type === 'job' ? {
     '@context': 'https://schema.org',
@@ -45,81 +164,169 @@ export default function JobDetails() {
     datePosted: job.published_at,
     validThrough: job.last_date || undefined,
     hiringOrganization: { '@type': 'Organization', name: organization },
-    employmentType: 'OTHER',
+    employmentType: 'FULL_TIME',
+    jobLocation: { '@type': 'Place', address: { '@type': 'PostalAddress', addressCountry: 'IN' } },
+    ...(job.total_vacancy != null && { totalJobOpenings: job.total_vacancy }),
     url: `${SITE_URL}${canonicalPath}`,
   } : null;
-  const details = [
-    ['Organization', organization],
-    ['Post Name', job.post_name],
-    ['Advertisement Number', null],
-    ['Vacancies', job.total_vacancy],
-    ['Qualification', job.qualification],
-    ['Salary / Pay Level', null],
-    ['Age Limit', job.age_limit],
-    ['Application Fee', job.fee_info],
-    ['Selection Process', null],
-    ['Start Date', formatDate(job.apply_start)],
-    ['Last Date', formatDate(job.last_date)],
-    ['Exam Date', formatDate(job.exam_date)],
-  ];
-  const shareUrl = `${SITE_URL}${canonicalPath}`;
-  const record = async (activity) => {
-    if (!user) return navigate('/login', { state: { from: canonicalPath } });
-    try {
-      await recordJobActivity(job.id, activity);
-      setActivityMessage(activity === 'saved' ? 'Job saved.' : 'Application marked.');
-    } catch (recordError) {
-      setActivityMessage(recordError.message);
-    }
-  };
 
   return (
-    <>
-      <SEO title={title} description={`${title} by ${organization}. Check dates, qualification, vacancies, and official links.`} path={canonicalPath} type="article" schema={schema} />
-      <div className="container py-10">
-        <Breadcrumbs items={[{ label: 'Jobs', to: '/jobs' }, { label: title }]} />
-        <article>
-          <header className="rounded-3xl bg-[#123d31] px-6 py-10 text-white sm:px-10">
-            <span className="tag border-white/15 bg-white/10 text-[#f7c7a7]">{job.type?.replaceAll('_', ' ')}</span>
-            <h1 className="mt-5 max-w-4xl font-serif text-4xl font-semibold leading-tight sm:text-5xl">{title}</h1>
-            <Link to={`/organization/${encodeURIComponent(organization)}`} className="mt-4 inline-block text-white/70 hover:text-white">{organization}</Link>
-          </header>
-          <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_320px]">
-            <section className="panel">
-              <h2 className="font-serif text-2xl font-semibold">Job details</h2>
-              <dl className="mt-6 grid gap-x-8 sm:grid-cols-2">
-                {details.map(([label, value]) => <div key={label} className="border-b border-[#153c31]/10 py-4"><dt className="text-xs font-bold uppercase tracking-wider text-[#75847f]">{label}</dt><dd className="mt-2 text-sm font-medium">{value || <DataUnavailable />}</dd></div>)}
-              </dl>
-              {job.short_info && <div className="mt-7"><h2 className="font-serif text-2xl font-semibold">Overview</h2><p className="mt-3 leading-7 text-[#52645f]">{job.short_info}</p></div>}
-            </section>
-            <aside className="space-y-4">
-              <div className="panel">
-                <h2 className="font-semibold">Official links</h2>
-                <div className="mt-4 grid gap-3">
-                  {notification ? <a className="button" href={notification} target="_blank" rel="noopener noreferrer">Official Notification</a> : <DataUnavailable label="Official notification unavailable" />}
-                  {apply ? <a className="button-secondary" href={apply} target="_blank" rel="noopener noreferrer">Apply Online</a> : <DataUnavailable label="Apply link unavailable" />}
-                  <button className="button-secondary" onClick={() => record('saved')}>Save Job</button>
-                  <button className="button-secondary" onClick={() => record('applied')}>Mark as Applied</button>
-                  {activityMessage && <p className="text-xs text-[#667771]" role="status">{activityMessage}</p>}
-                </div>
+    <main className="detail-page">
+      <SEO
+        title={title}
+        description={job.short_info || `${title} by ${organization}. Check dates, qualification, vacancies and official links.`}
+        path={canonicalPath}
+        type="article"
+        schema={schema}
+      />
+      <div className="container">
+        <Breadcrumbs items={[{ label: SECTORS[sector].label, to: `/category/${sector}` }, { label: title }]} />
+        <section className={`detail-header sector-context sector-${sector}`}>
+          <div className="detail-title-wrap">
+            <OrgMark job={job} sector={sector} large />
+            <div>
+              <div className="title-meta">
+                <Badge status={status} />
+                <SectorBadge sector={sector} />
               </div>
-              <div className="panel">
-                <h2 className="font-semibold">Share</h2>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <a className="button-secondary" href={`https://wa.me/?text=${encodeURIComponent(`${title} ${shareUrl}`)}`} target="_blank" rel="noreferrer">WhatsApp</a>
-                  <a className="button-secondary" href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(title)}&url=${encodeURIComponent(shareUrl)}`} target="_blank" rel="noreferrer">X</a>
-                  <button className="button-secondary" onClick={() => navigator.clipboard?.writeText(shareUrl)}>Copy link</button>
-                </div>
-              </div>
-              <div className="rounded-2xl border border-amber-300 bg-amber-50 p-4 text-sm leading-6 text-amber-900">Verify all information in the official notification before applying.</div>
-            </aside>
+              <h1>{title}</h1>
+              <p><Link to={`/organization/${encodeURIComponent(organization)}`}>{organization}</Link></p>
+            </div>
           </div>
-        </article>
-        <section className="section">
-          <div className="section-heading"><div><h2>Similar Jobs</h2><p>Rule-based matches by category, organization, and job details</p></div></div>
-          {data.related.length ? <div className="grid gap-4 lg:grid-cols-3">{data.related.slice(0, 3).map((item) => <JobCard key={item.id} job={item} />)}</div> : <DataUnavailable label="No related jobs available" />}
+          <div className="detail-actions">
+            <button className={`button secondary ${saved ? 'saved' : ''}`} onClick={save}>
+              <Icon name="bookmark" size={17} /> {saved ? 'Saved' : 'Save'}
+            </button>
+            {apply && (
+              <a className="button primary" href={apply} target="_blank" rel="noopener noreferrer">
+                Apply on official site <Icon name="external" size={16} />
+              </a>
+            )}
+          </div>
+          <div className="verification-banner">
+            <Icon name="verified" />
+            <p>
+              <strong>Sourced from {job.source_name || 'the official website'}</strong>
+              <small>
+                Last updated {displayDate(job.updated_at || job.published_at, 'recently')}
+                {job.post_name && ` • ${job.post_name}`}
+              </small>
+            </p>
+            {notification && (
+              <a href={notification} target="_blank" rel="noopener noreferrer">
+                View official notice <Icon name="external" size={14} />
+              </a>
+            )}
+          </div>
         </section>
+        <div className="detail-layout">
+          <div>
+            <section className="key-facts">
+              <div>
+                <span>VACANCIES</span>
+                <strong>{vacanciesFor(job)}</strong>
+                <small>As per notification</small>
+              </div>
+              <div>
+                <span>LAST DATE</span>
+                <strong>{displayDate(job.last_date, 'To be announced')}</strong>
+                <small className={toClose != null && toClose >= 0 && toClose <= 7 ? 'urgent' : ''}>
+                  {toClose == null ? 'Check notification' : toClose < 0 ? 'Applications closed' : toClose === 0 ? 'Closes today' : `${toClose} days remaining`}
+                </small>
+              </div>
+              <div>
+                <span>QUALIFICATION</span>
+                <strong>{job.qualification || 'See notification'}</strong>
+                <small>Check full eligibility</small>
+              </div>
+              <div>
+                <span>AGE LIMIT</span>
+                <strong>{job.age_limit || 'See notification'}</strong>
+                <small>Relaxation as per rules</small>
+              </div>
+            </section>
+            <section className={`timeline-card sector-timeline sector-${sector}`}>
+              <SectionHeading eyebrow="RECRUITMENT JOURNEY" title="Important timeline" />
+              <div className="timeline">
+                {timelineFor(job).map((step, index) => (
+                  <div className={`timeline-item ${step.state}`} key={step.label}>
+                    <span className="timeline-dot">{step.state === 'complete' ? '✓' : index + 1}</span>
+                    <p>
+                      <strong>{step.label}</strong>
+                      <small>{displayDate(step.date, 'To be announced')}</small>
+                    </p>
+                    <Badge status={step.state === 'current' ? (step.key === 'close' ? status : 'Upcoming') : STATE_BADGE[step.state]} />
+                    {(notification || official) && (
+                      <a href={notification || official} target="_blank" rel="noopener noreferrer" aria-label={`Official source for ${step.label}`}>
+                        <Icon name="external" size={15} />
+                      </a>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </section>
+            <section className="info-card">
+              <div className="info-tabs">
+                {TABS.map((name) => (
+                  <button className={tab === name ? 'active' : ''} onClick={() => setTab(name)} key={name}>{name}</button>
+                ))}
+              </div>
+              <div className="info-content">
+                <span>{tab.toUpperCase()}</span>
+                <h2>{tab === 'Overview' ? `About ${title}` : tab}</h2>
+                <TabContent tab={tab} job={job} title={title} notification={notification} />
+                <div className="notice">
+                  <Icon name="verified" />
+                  <p>
+                    <strong>Always verify before applying</strong>
+                    <small>Dates and requirements are summarized from the official notification. GovTrack Jobs does not conduct this recruitment.</small>
+                  </p>
+                </div>
+              </div>
+            </section>
+          </div>
+          <aside className="sidebar detail-side">
+            <div className="side-card apply-card">
+              <span>APPLICATION STATUS</span>
+              <Badge status={status} />
+              {left ? (
+                <>
+                  <h3>Applications close in</h3>
+                  <div className="countdown">
+                    <span><strong>{String(left.days).padStart(2, '0')}</strong><small>DAYS</small></span>
+                    <span><strong>{String(left.hours).padStart(2, '0')}</strong><small>HOURS</small></span>
+                    <span><strong>{String(left.mins).padStart(2, '0')}</strong><small>MINS</small></span>
+                  </div>
+                </>
+              ) : (
+                <h3>{job.last_date ? 'Applications are closed' : 'Last date to be announced'}</h3>
+              )}
+              {apply ? (
+                <a className="button primary" href={apply} target="_blank" rel="noopener noreferrer">
+                  Apply now <Icon name="external" size={16} />
+                </a>
+              ) : <button className="button primary" disabled>Apply link not available</button>}
+              <small>Opens official {organization} website</small>
+            </div>
+            <div className="side-card official-links">
+              <div className="side-card-title">
+                <div>
+                  <span>QUICK ACCESS</span>
+                  <h3>Official links</h3>
+                </div>
+              </div>
+              {(job.important_links || []).filter((link) => /^https?:\/\//i.test(link.url || '')).map((link) => (
+                <a key={`${link.label}-${link.url}`} href={link.url} target="_blank" rel="noopener noreferrer">
+                  <Icon name={/pdf|notification/i.test(link.label || '') ? 'file' : 'external'} size={16} />
+                  {link.label || 'Official link'}
+                  <Icon name="arrow" size={15} />
+                </a>
+              ))}
+              {!(job.important_links || []).length && <p>No official links added yet.</p>}
+            </div>
+          </aside>
+        </div>
       </div>
-    </>
+    </main>
   );
 }

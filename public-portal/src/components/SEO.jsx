@@ -1,8 +1,10 @@
 import { Helmet } from 'react-helmet-async';
 import { SITE_URL } from '../api.js';
 
+export const SITE_NAME = 'GovTrack Jobs';
+
 export default function SEO({ title, description, path = '/', type = 'website', schema }) {
-  const fullTitle = title ? `${title} | Government Jobs Portal` : 'Government Jobs Portal';
+  const fullTitle = title ? `${title} | ${SITE_NAME}` : `${SITE_NAME} — Government Jobs & Exams`;
   const canonical = `${SITE_URL}${path}`;
   return (
     <Helmet>

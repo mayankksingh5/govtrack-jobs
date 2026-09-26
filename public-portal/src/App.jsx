@@ -8,6 +8,8 @@ const Home = lazy(() => import('./pages/Home.jsx'));
 const Jobs = lazy(() => import('./pages/Jobs.jsx'));
 const JobDetails = lazy(() => import('./pages/JobDetails.jsx'));
 const Search = lazy(() => import('./pages/Search.jsx'));
+const Calendar = lazy(() => import('./pages/Calendar.jsx'));
+const Updates = lazy(() => import('./pages/Updates.jsx'));
 const Organization = lazy(() => import('./pages/Organization.jsx'));
 const Category = lazy(() => import('./pages/Category.jsx'));
 const StaticPage = lazy(() => import('./pages/StaticPage.jsx'));
@@ -29,6 +31,15 @@ export default function App() {
           <Route path="/jobs" element={<Jobs />} />
           <Route path="/jobs/:id" element={<JobDetails />} />
           <Route path="/search" element={<Search />} />
+          <Route path="/exams" element={<Calendar />} />
+          <Route path="/exam-calendar" element={<Calendar />} />
+          <Route path="/results" element={<Updates kind="results" />} />
+          <Route path="/admit-cards" element={<Updates kind="admit-cards" />} />
+          <Route path="/answer-keys" element={<Updates kind="answer-keys" />} />
+          <Route path="/cut-off" element={<Updates kind="cut-off" />} />
+          <Route path="/syllabus" element={<Updates kind="syllabus" />} />
+          <Route path="/category/:slug" element={<Category />} />
+          <Route path="/organization/:name" element={<Organization />} />
           <Route path="/for-you" element={<Recommendations />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
@@ -38,8 +49,6 @@ export default function App() {
           <Route path="/saved-jobs" element={<ProtectedRoute><UserJobs kind="saved" /></ProtectedRoute>} />
           <Route path="/recently-viewed" element={<ProtectedRoute><UserJobs kind="recent" /></ProtectedRoute>} />
           <Route path="/applied-jobs" element={<ProtectedRoute><UserJobs kind="applied" /></ProtectedRoute>} />
-          <Route path="/organization/:name" element={<Organization />} />
-          <Route path="/category/:slug" element={<Category />} />
           <Route path="/about" element={<StaticPage type="about" />} />
           <Route path="/contact" element={<StaticPage type="contact" />} />
           <Route path="/privacy" element={<StaticPage type="privacy" />} />
